@@ -13,7 +13,7 @@
         <template #header>
           <div class="card-header">
             <span>订单信息</span>
-            <el-tag :type="getStatusType(orderDetail.status)">{{ getStatusText(orderDetail.status) }}</el-tag>
+            <el-tag :type="getStatusType(orderDetail.status)">{{ getOrderStatusText }}</el-tag>
           </div>
         </template>
         
@@ -120,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -198,17 +198,28 @@ const formatTime = (timeStr: string) => {
   return date.toLocaleString()
 }
 
-// 根据订单状态获取文本
-const getStatusText = (status: number) => {
-  const statusMap: {[key: number]: string} = {
-    0: '已取消',
-    10: '待付款',
-    20: '待发货',
-    30: '待收货',
-    40: '已完成'
+// 格式化订单状态
+const formatOrderStatus = (status: number) => {
+  switch (status) {
+    case 0:
+      return '已取消'
+    case 10:
+      return '待付款'
+    case 20:
+      return '待发货'
+    case 30:
+      return '待收货'
+    case 40:
+      return '已完成'
+    default:
+      return '未知状态'
   }
-  return statusMap[status] || '未知状态'
 }
+
+// 根据订单状态获取文本
+const getOrderStatusText = computed(() => {
+  return formatOrderStatus(orderDetail.value.status)
+})
 
 // 根据订单状态获取Tag类型
 const getStatusType = (status: number) => {

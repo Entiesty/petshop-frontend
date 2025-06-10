@@ -124,6 +124,7 @@ interface OrderItem {
   productName: string;
   unitPrice: number;
   quantity: number;
+  imageUrl: string;
 }
 
 interface OrderDetail {
@@ -219,7 +220,13 @@ const fetchOrderDetail = async () => {
       id: response.data.id,
       orderNo: response.data.orderNo,
       totalAmount: response.data.totalAmount,
-      items: response.data.items
+      items: response.data.items.map((item: any) => ({
+        productId: item.productId,
+        productName: item.name,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        imageUrl: item.mainImageUrl || '../assets/homelogo.png'
+      }))
     }
     
     // 如果订单已支付，重定向到订单详情页

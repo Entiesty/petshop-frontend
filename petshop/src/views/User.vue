@@ -70,7 +70,7 @@
               <div class="order-header">
                 <div class="order-info">
                   <span class="order-number">订单号：{{ order.orderNo }}</span>
-                  <span class="order-date">{{ order.createdAt }}</span>
+                  <span class="order-date">{{ order.createdAtFormatted }}</span>
                 </div>
                 <el-tag :type="getStatusType(order.status)">{{ getStatusText(order.status) }}</el-tag>
               </div>
@@ -224,7 +224,9 @@ interface Order {
   productDesc: string;
   price: number;
   quantity: number;
-  items: OrderItem[];
+  items: any[];
+  statusText?: string;
+  createdAtFormatted?: string;
 }
 
 interface AddressForm {
@@ -535,42 +537,105 @@ const confirmReceive = async (order: Order) => {
   }
 }
 
-// 获取用户资料
-const fetchUserProfile = async () => {
+// 获取用户信息
+const fetchUserInfo = async () => {
   try {
-    const response = await axios.get('/api/user/profile')
-    userProfile.value = response.data
+    const response = await axios.get('/api/user/users/me')
+    userProfile.value = {
+      id: response.data.id,
+      username: response.data.username,
+      nickname: response.data.nickname || response.data.username,
+      avatarUrl: response.data.avatarUrl || '../assets/homelogo.png',
+      role: response.data.role
+    }
   } catch (error) {
     console.error('获取用户信息失败:', error)
-    ElMessage.error('获取用户信息失败，请稍后重试')
+    ElMessage.error('获取用户信息失败')
   }
 }
 
 // 获取收货地址列表
 const fetchAddresses = async () => {
   try {
+    addressesLoading.value = true
     const response = await axios.get('/api/user/addresses')
-    addresses.value = response.data
+    
+    if (Array.isArray(response.data)) {
+      addresses.value = response.data.map((addr: any) => ({
+        id: addr.id,
+        contactName: addr.contactName,
+        phone: addr.phone,
+        province: addr.province,
+        city: addr.city,
+        district: addr.district,
+        street: addr.street,
+        isDefault: addr.isDefault,
+        fullAddress: `${addr.province} ${addr.city} ${addr.district} ${addr.street}`
+      }))
+    } else {
+      addresses.value = []
+    }
   } catch (error) {
     console.error('获取地址列表失败:', error)
-    ElMessage.error('获取地址列表失败，请稍后重试')
+    ElMessage.error('获取地址列表失败')
+  } finally {
+    addressesLoading.value = false
   }
 }
 
 // 获取订单列表
 const fetchOrders = async () => {
   try {
+    ordersLoading.value = true
     const response = await axios.get('/api/user/orders', {
-      params: { current: 1, size: 10 }
+      params: {
+        current: orderCurrentPage.value,
+        size: orderPageSize.value
+      }
     })
     
     if (response.data && response.data.records) {
-      orders.value = response.data.records
+      orders.value = response.data.records.map((order: any) => ({
+        ...order,
+        statusText: formatOrderStatus(order.status),
+        createdAtFormatted: formatDate(order.createdAt)
+      }))
+      orderTotal.value = response.data.total || 0
+    } else {
+      orders.value = []
+      orderTotal.value = 0
     }
   } catch (error) {
     console.error('获取订单列表失败:', error)
-    ElMessage.error('获取订单列表失败，请稍后重试')
+    ElMessage.error('获取订单列表失败')
+  } finally {
+    ordersLoading.value = false
   }
+}
+
+// 格式化订单状态
+const formatOrderStatus = (status: number) => {
+  switch (status) {
+    case 0:
+      return '已取消'
+    case 10:
+      return '待付款'
+    case 20:
+      return '待发货'
+    case 30:
+      return '待收货'
+    case 40:
+      return '已完成'
+    default:
+      return '未知状态'
+  }
+}
+
+// 格式化日期
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString()
 }
 
 // 获取所有数据
@@ -578,7 +643,7 @@ const fetchAllData = async () => {
   loading.value = true
   try {
     await Promise.all([
-      fetchUserProfile(),
+      fetchUserInfo(),
       fetchAddresses(),
       fetchOrders()
     ])
@@ -588,6 +653,15 @@ const fetchAllData = async () => {
     loading.value = false
   }
 }
+
+// 订单相关数据
+const ordersLoading = ref(false)
+const orderCurrentPage = ref(1)
+const orderPageSize = ref(10)
+const orderTotal = ref(0)
+
+// 地址相关数据
+const addressesLoading = ref(false)
 
 onMounted(() => {
   fetchAllData()

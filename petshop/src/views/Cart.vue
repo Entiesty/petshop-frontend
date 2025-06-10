@@ -244,12 +244,12 @@ const fetchCartItems = async () => {
       // 转换接口返回的数据格式
       cartItems.value = response.data.items.map((item: any) => ({
         productId: item.productId,
-        productName: item.productName,
+        productName: item.name,
         description: item.description || '',
         price: parseFloat(item.price),
         quantity: item.quantity,
         selected: true, // 默认全选
-        imageUrl: item.imageUrl || '/assets/product-default.jpg'
+        imageUrl: item.mainImageUrl || '../assets/homelogo.png'
       }))
       calculateTotal()
     } else {
@@ -268,7 +268,7 @@ const fetchCartItems = async () => {
         price: 3800,
         quantity: 1,
         selected: true,
-        imageUrl: '/assets/pets/cat.jpg'
+        imageUrl: '../assets/homelogo.png'
       },
       {
         productId: 2,
@@ -277,7 +277,7 @@ const fetchCartItems = async () => {
         price: 2500,
         quantity: 1,
         selected: true,
-        imageUrl: '/assets/pets/dog.jpg'
+        imageUrl: '../assets/homelogo.png'
       }
     ]
     calculateTotal()

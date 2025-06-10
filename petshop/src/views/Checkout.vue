@@ -223,12 +223,12 @@ const submitOrder = async () => {
     submitting.value = true
     
     // 获取购物车中选中的商品ID
-    const productIds = checkoutItems.value.map(item => item.productId)
+    const cartItemIds = checkoutItems.value.map(item => item.productId)
     
     // 提交订单
     const response = await axios.post('/api/user/orders', {
       addressId: selectedAddressId.value,
-      productIds: productIds,
+      cartItemIds: cartItemIds,
       remark: remark.value
     })
     
@@ -261,12 +261,27 @@ const fetchCheckoutItems = async () => {
     // 将逗号分隔的ID转为数组
     const productIds = itemIds.split(',').map(id => parseInt(id))
     
-    // 获取结算商品详情
-    const response = await axios.post('/api/user/cart/checkout', {
-      productIds: productIds
-    })
+    // 从购物车API获取数据
+    const response = await axios.get('/api/user/cart')
     
-    checkoutItems.value = response.data
+    if (response.data && response.data.items) {
+      // 过滤出选中的商品
+      const selectedItems = response.data.items.filter((item: any) => 
+        productIds.includes(item.productId)
+      )
+      
+      checkoutItems.value = selectedItems.map((item: any) => ({
+        productId: item.productId,
+        productName: item.name,
+        description: item.description || '',
+        price: parseFloat(item.price),
+        quantity: item.quantity,
+        imageUrl: item.mainImageUrl || '../assets/homelogo.png'
+      }))
+    } else {
+      ElMessage.warning('获取结算商品失败')
+      router.push('/cart')
+    }
   } catch (error) {
     console.error('获取结算商品失败:', error)
     ElMessage.error('获取结算商品失败，请稍后重试')

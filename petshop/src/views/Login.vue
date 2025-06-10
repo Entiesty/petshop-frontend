@@ -160,25 +160,16 @@ const toggleConfirmPasswordVisibility = () => {
 }
 
 const handleLogin = async () => {
+  // 表单验证
+  if (!loginForm.username || !loginForm.password) {
+    alert('请填写用户名和密码')
+    return
+  }
+  
   try {
-    // 表单验证
-    if (!loginForm.username || !loginForm.password) {
-      alert('请填写用户名和密码')
-      return
-    }
-    
     // 调试信息
     console.log('准备发送登录请求，URL:', AUTH_API.LOGIN)
     console.log('请求数据:', { username: loginForm.username, password: '***' })
-    
-    // 打印完整的请求 URL 和请求头
-    const fullUrl = axios.defaults.baseURL + AUTH_API.LOGIN
-    console.log('完整请求URL:', fullUrl)
-    console.log('axios 默认配置:', {
-      baseURL: axios.defaults.baseURL,
-      timeout: axios.defaults.timeout,
-      headers: axios.defaults.headers
-    })
     
     const response = await axios.post(AUTH_API.LOGIN, {
       username: loginForm.username,
@@ -188,18 +179,32 @@ const handleLogin = async () => {
     // 调试信息
     console.log('登录响应:', response.data)
     
-    // 保存token到localStorage
-    localStorage.setItem(TOKEN_KEY, response.data.accessToken)
-    
-    // 如果记住我被选中，可以在这里保存用户名等信息
-    if (loginForm.remember) {
-      localStorage.setItem(REMEMBERED_USERNAME_KEY, loginForm.username)
+    // 保存令牌到本地存储 - 修改为使用accessToken字段
+    if (response.data.accessToken) {
+      localStorage.setItem(TOKEN_KEY, response.data.accessToken)
+      
+      // 打印保存的令牌以检查
+      console.log('已保存令牌:', response.data.accessToken)
+      console.log('从本地存储中获取令牌:', localStorage.getItem(TOKEN_KEY))
+      
+      // 如果用户选择了记住用户名，则保存
+      if (loginForm.remember) {
+        localStorage.setItem(REMEMBERED_USERNAME_KEY, loginForm.username)
+      } else {
+        localStorage.removeItem(REMEMBERED_USERNAME_KEY)
+      }
+      
+      alert('登录成功')
+      
+      // 添加请求头到axios
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`
+      
+      // 跳转到首页
+      router.push('/home')
     } else {
-      localStorage.removeItem(REMEMBERED_USERNAME_KEY)
+      console.error('响应中没有包含令牌')
+      alert('登录失败：服务器响应异常')
     }
-    
-    // 跳转到首页
-    router.push('/home')
   } catch (error: any) {
     console.error('登录请求错误:', error)
     console.error('错误详情:', {
