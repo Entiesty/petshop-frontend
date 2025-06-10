@@ -4,6 +4,8 @@ import Login from '../views/Login.vue'
 import Cart from '../views/Cart.vue'
 import EmptyCart from '../views/EmptyCart.vue'
 import User from '../views/User.vue'
+import ProductDetail from '../views/ProductDetail.vue'
+import StoreDetail from '../views/StoreDetail.vue'
 import { TOKEN_KEY } from '../config'
 
 const router = createRouter({
@@ -39,12 +41,12 @@ const router = createRouter({
     {
       path: '/product/:id',
       name: 'ProductDetail',
-      component: () => import('../views/ProductDetail.vue')
+      component: ProductDetail
     },
     {
       path: '/store/:id',
       name: 'StoreDetail',
-      component: () => import('../views/StoreDetail.vue')
+      component: StoreDetail
     },
     {
       path: '/checkout',

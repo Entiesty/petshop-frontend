@@ -38,6 +38,31 @@
           </el-button>
         </div>
         
+        <div class="store-info-section">
+          <h2>店铺信息</h2>
+          <div class="store-info-card">
+            <div class="store-details">
+              <div class="store-detail-item">
+                <span class="store-detail-label">营业时间</span>
+                <span class="store-detail-value">周一～周五 10:00 - 20:00</span>
+                <span class="store-detail-value">周末及节假日 9:30 - 21:00</span>
+              </div>
+              <div class="store-detail-item">
+                <span class="store-detail-label">联系方式</span>
+                <span class="store-detail-value">400-123-4567</span>
+                <span class="store-detail-value">萌宠乐园客服</span>
+              </div>
+              <div class="store-detail-item">
+                <span class="store-detail-label">店铺地址</span>
+                <span class="store-detail-value">{{ store.addressText || '上海市浦东新区张江高科技园区科苑路88号' }}</span>
+              </div>
+            </div>
+            <div class="store-description">
+              <p>{{ store.description || '专业宠物用品店，一站式宠物体验，为您和您的爱宠提供最优质服务' }}</p>
+            </div>
+          </div>
+        </div>
+        
         <div class="store-products">
           <h2>店铺商品</h2>
           
@@ -85,6 +110,28 @@
             </el-tab-pane>
           </el-tabs>
         </div>
+        
+        <div class="store-reviews">
+          <h2>用户评价</h2>
+          
+          <div class="store-rating">
+            <div class="store-rating-score">4.8</div>
+            <div class="store-rating-stars">★★★★★</div>
+            <div class="store-rating-count">基于 128 条评价</div>
+          </div>
+          
+          <div class="review-list">
+            <div class="review-item" v-for="(review, index) in mockReviews" :key="index">
+              <div class="reviewer-info">
+                <img :src="review.avatar" :alt="review.name" class="reviewer-avatar">
+                <div class="reviewer-name">{{ review.name }}</div>
+                <div class="review-date">{{ review.date }}</div>
+              </div>
+              <div class="review-stars">{{ review.stars }}</div>
+              <div class="review-content">{{ review.content }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
     
@@ -109,9 +156,40 @@ declare global {
   }
 }
 
+// 定义商品接口
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  productType: number;
+}
+
+// 定义店铺接口
+interface Store {
+  id: number;
+  name: string;
+  addressText: string;
+  logoUrl: string;
+  contactPhone: string;
+  latitude: number;
+  longitude: number;
+  description?: string;
+}
+
+// 定义评论接口
+interface Review {
+  name: string;
+  avatar: string;
+  date: string;
+  stars: string;
+  content: string;
+}
+
 const route = useRoute()
 const router = useRouter()
-const storeId = ref(route.params.id)
+const storeId = ref(route.params.id as string)
 const loading = ref(true)
 const activeTab = ref('pet')
 const mapDialogVisible = ref(false)
@@ -120,7 +198,7 @@ const showDirections = ref(false)
 const userLocation = ref({ lng: 116.404, lat: 39.915 }) // 默认位置（北京）
 
 // 店铺信息
-const store = ref({
+const store = ref<Store>({
   id: 0,
   name: '',
   addressText: '',
@@ -131,7 +209,32 @@ const store = ref({
 })
 
 // 店铺商品
-const products = ref([])
+const products = ref<Product[]>([])
+
+// 模拟评论数据
+const mockReviews: Review[] = [
+  {
+    name: '张明',
+    avatar: '/assets/avatars/avatar1.jpg',
+    date: '2023-05-15',
+    stars: '★★★★★',
+    content: '狗粮质量真不错里的物美价廉，品质很好，宠物很喜欢，会继续回购！'
+  },
+  {
+    name: '李琳',
+    avatar: '/assets/avatars/avatar2.jpg',
+    date: '2023-04-28',
+    stars: '★★★★★',
+    content: '商品样式很好，服务态度好，就是价格稍微有点贵，但质量确实不错。'
+  },
+  {
+    name: '王强',
+    avatar: '/assets/avatars/avatar3.jpg',
+    date: '2023-04-10',
+    stars: '★★★★★',
+    content: '给猫咪买的玩具真的很好，猫咪很喜欢玩，物有所值，非常满意！'
+  }
+]
 
 // 按类型筛选商品
 const petProducts = computed(() => {
@@ -148,7 +251,7 @@ const goBack = () => {
 }
 
 // 查看商品详情
-const viewProduct = (productId) => {
+const viewProduct = (productId: number) => {
   router.push(`/product/${productId}`)
 }
 
@@ -249,6 +352,18 @@ const fetchStoreDetail = async () => {
   } catch (error) {
     console.error('获取店铺详情失败:', error)
     ElMessage.error('获取店铺详情失败，请稍后重试')
+    
+    // 使用模拟数据（实际开发中应删除）
+    store.value = {
+      id: 1,
+      name: '萌宠乐园',
+      addressText: '上海市浦东新区张江高科技园区科苑路88号',
+      logoUrl: '/assets/stores/store1.jpg',
+      contactPhone: '400-123-4567',
+      latitude: 31.2304,
+      longitude: 121.4737,
+      description: '专业宠物用品店，一站式宠物体验，为您和您的爱宠提供最优质服务'
+    }
   } finally {
     loading.value = false
   }
@@ -257,42 +372,85 @@ const fetchStoreDetail = async () => {
 // 获取店铺商品
 const fetchStoreProducts = async () => {
   try {
-    const response = await axios.get(`/api/user/products/store/${storeId.value}`)
+    const response = await axios.get(`/api/user/stores/${storeId.value}/products`)
     products.value = response.data
   } catch (error) {
     console.error('获取店铺商品失败:', error)
-    ElMessage.error('获取店铺商品失败，请稍后重试')
+    
+    // 使用模拟数据（实际开发中应删除）
+    products.value = [
+      {
+        id: 1,
+        name: '皇家小型犬成犬粮 3kg',
+        description: '适合小型犬',
+        price: 198,
+        imageUrl: '/assets/products/dogfood.jpg',
+        productType: 2
+      },
+      {
+        id: 2,
+        name: '海勒六种鱼全猫粮 5.4kg',
+        description: '适合所有猫咪',
+        price: 589,
+        imageUrl: '/assets/products/catfood.jpg',
+        productType: 2
+      },
+      {
+        id: 3,
+        name: 'ZEAL 宠物牛奶 380ml*6',
+        description: '高营养配方',
+        price: 89,
+        imageUrl: '/assets/products/milk.jpg',
+        productType: 2
+      },
+      {
+        id: 4,
+        name: 'KONG 经典漏食玩具 中号',
+        description: '耐咬互动',
+        price: 128,
+        imageUrl: '/assets/products/toy.jpg',
+        productType: 2
+      },
+      {
+        id: 5,
+        name: '福莱尔 伸缩牵引绳 5m',
+        description: '结实耐用',
+        price: 159,
+        imageUrl: '/assets/products/leash.jpg',
+        productType: 2
+      },
+      {
+        id: 6,
+        name: '小佩 智能饮水机 2代',
+        description: '智能过滤',
+        price: 299,
+        imageUrl: '/assets/products/waterer.jpg',
+        productType: 2
+      }
+    ]
   }
 }
 
 onMounted(() => {
-  // 获取用户位置
-  getUserLocation()
-  
-  // 获取店铺详情和商品
   fetchStoreDetail()
   fetchStoreProducts()
-  
-  // 加载高德地图API
-  if (!window.AMap) {
-    const script = document.createElement('script')
-    script.src = 'https://webapi.amap.com/maps?v=2.0&key=您的高德地图Key'
-    script.async = true
-    document.head.appendChild(script)
-  }
+  getUserLocation()
 })
 </script>
 
 <style scoped>
 .store-detail-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #f5f5f5;
+  width: 100%;
   min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: #fff;
 }
 
 .loading-container {
+  max-width: 1200px;
+  margin: 0 auto;
   background-color: white;
   padding: 20px;
   border-radius: 4px;
@@ -300,19 +458,28 @@ onMounted(() => {
 
 .store-header {
   margin-bottom: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 20px 0 20px;
 }
 
 .store-content {
+  display: flex;
+  flex-direction: column;
   background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 20px 20px;
 }
 
 .store-banner {
   position: relative;
-  height: 300px;
+  width: 100%;
+  height: 200px;
   overflow: hidden;
+  margin-bottom: 30px;
+  border-radius: 8px;
+  background-color: #f5f5f5;
 }
 
 .store-banner img {
@@ -326,19 +493,18 @@ onMounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-  padding: 30px 20px 20px;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
   color: white;
 }
 
 .store-info-overlay h1 {
   margin: 0 0 10px 0;
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .store-info-detail {
   display: flex;
-  flex-wrap: wrap;
   gap: 20px;
 }
 
@@ -348,50 +514,52 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.el-icon {
+.store-address i, .store-phone i {
   margin-right: 5px;
 }
 
 .store-actions {
   display: flex;
-  gap: 20px;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
+  gap: 15px;
+  margin-bottom: 30px;
 }
 
 .store-products {
-  padding: 20px;
+  margin-bottom: 40px;
 }
 
 .store-products h2 {
-  margin-top: 0;
+  font-size: 24px;
   margin-bottom: 20px;
-  font-size: 20px;
   color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
 }
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-  margin-top: 20px;
+  margin-bottom: 30px;
 }
 
 .product-card {
   background-color: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .product-card:hover {
   transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .product-image {
-  height: 180px;
+  width: 100%;
+  height: 200px;
   overflow: hidden;
 }
 
@@ -407,7 +575,9 @@ onMounted(() => {
 
 .product-name {
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
+  font-size: 16px;
+  color: #333;
 }
 
 .product-desc {
@@ -422,30 +592,106 @@ onMounted(() => {
 .product-price {
   color: #f56c6c;
   font-weight: bold;
+  font-size: 18px;
 }
 
 .map-container {
   width: 100%;
   height: 400px;
-  border-radius: 4px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
+/* 店铺信息部分 */
+.store-info-section {
+  margin-bottom: 40px;
+}
+
+.store-info-section h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.store-info-card {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.store-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.store-detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.store-detail-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.store-detail-value {
+  color: #666;
+}
+
+/* 用户评价部分 */
+.store-reviews {
+  margin-bottom: 40px;
+}
+
+.store-reviews h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.store-rating {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.store-rating-score {
+  font-size: 36px;
+  font-weight: bold;
+  color: #ff9800;
+  margin-right: 20px;
+}
+
+.store-rating-stars {
+  color: #ff9800;
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+.store-rating-count {
+  color: #999;
+}
+
+.review-list {
+  margin-bottom: 20px;
+}
+
+/* 响应式布局 */
 @media (max-width: 768px) {
-  .store-banner {
-    height: 200px;
-  }
-  
-  .store-actions {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(1, 1fr);
   }
   
-  .product-image {
-    height: 150px;
+  .store-details {
+    grid-template-columns: 1fr;
   }
 }
 </style> 
