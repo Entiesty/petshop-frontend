@@ -134,6 +134,7 @@ import { User, ShoppingCart, HomeFilled } from '@element-plus/icons-vue'
 declare global {
   interface Window {
     AMap: any;
+    createAiChat: (options: { appId: string; iconPosition: string }) => void;
   }
 }
 
@@ -439,7 +440,12 @@ onMounted(() => {
     script.async = true
     document.head.appendChild(script)
   }
-})
+});
+window.createAiChat({
+       appId:"1931906988632010754",
+       // 支持top-left左上, top-right右上, bottom-left左下, bottom-right右下
+       iconPosition:"bottom-right"
+    })
 </script>
 
 <style scoped>
