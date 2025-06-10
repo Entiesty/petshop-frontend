@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
+import Cart from '../views/Cart.vue'
+import EmptyCart from '../views/EmptyCart.vue'
+import User from '../views/User.vue'
 import { TOKEN_KEY } from '../config'
 
 const router = createRouter({
@@ -7,18 +11,63 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/home'
+      name: 'Home',
+      component: Home
     },
     {
       path: '/login',
-      name: 'login',
+      name: 'Login',
       component: Login
     },
     {
-      path: '/home',
-      name: 'home',
-      component: () => import('../views/Home.vue'),
+      path: '/cart',
+      name: 'Cart',
+      component: Cart,
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/empty-cart',
+      name: 'EmptyCart',
+      component: EmptyCart
+    },
+    {
+      path: '/user',
+      name: 'User',
+      component: User,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/product/:id',
+      name: 'ProductDetail',
+      component: () => import('../views/ProductDetail.vue')
+    },
+    {
+      path: '/store/:id',
+      name: 'StoreDetail',
+      component: () => import('../views/StoreDetail.vue')
+    },
+    {
+      path: '/checkout',
+      name: 'Checkout',
+      component: () => import('../views/Checkout.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/order/:orderNo',
+      name: 'OrderDetail',
+      component: () => import('../views/OrderDetail.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/payment/:orderNo',
+      name: 'Payment',
+      component: () => import('../views/Payment.vue'),
+      meta: { requiresAuth: true }
+    },
+    // 路由守卫：重定向到登录页
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
     }
   ]
 })
@@ -30,14 +79,14 @@ router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     // 需要登录的页面
     if (!isAuthenticated) {
-      next({ name: 'login' })
+      next({ name: 'Login', query: { redirect: to.fullPath } })
     } else {
       next()
     }
   } else {
     // 不需要登录的页面
     if (isAuthenticated && to.path === '/login') {
-      next({ name: 'home' })
+      next({ name: 'Home' })
     } else {
       next()
     }

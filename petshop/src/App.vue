@@ -19,7 +19,7 @@
 body {
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: #333;
-  background-color: #fef8ed;
+  background-color: #fff;
   line-height: 1.5;
 }
 
