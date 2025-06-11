@@ -6,6 +6,7 @@ import EmptyCart from '../views/EmptyCart.vue'
 import User from '../views/User.vue'
 import ProductDetail from '../views/ProductDetail.vue'
 import StoreDetail from '../views/StoreDetail.vue'
+import AIAssistant from '../views/AIAssistant.vue'
 import { TOKEN_KEY } from '../config'
 
 const router = createRouter({
@@ -47,6 +48,11 @@ const router = createRouter({
       path: '/store/:id',
       name: 'StoreDetail',
       component: StoreDetail
+    },
+    {
+      path: '/ai-assistant',
+      name: 'AIAssistant',
+      component: AIAssistant
     },
     {
       path: '/checkout',
