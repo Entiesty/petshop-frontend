@@ -11,7 +11,20 @@
         <router-link to="/ai-assistant" class="ai-icon">
           <el-icon><ChatDotRound /></el-icon>
         </router-link>
-        <router-link to="/user" class="user-icon">
+        <div class="user-menu" v-if="isLoggedIn">
+          <el-dropdown>
+            <span class="user-icon">
+              <el-icon><User /></el-icon>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="goToProfile">个人中心</el-dropdown-item>
+                <el-dropdown-item @click="logout" divided>退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <router-link v-else to="/login" class="user-icon">
           <el-icon><User /></el-icon>
         </router-link>
         <router-link to="/cart" class="cart-icon">
@@ -130,8 +143,9 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus'
 import { User, ShoppingCart, HomeFilled, ChatDotRound } from '@element-plus/icons-vue'
+import { TOKEN_KEY } from '../config'
 
 // 扩展Window接口以包含AMap
 declare global {
@@ -158,6 +172,32 @@ const mapDialogVisible = ref(false)
 const mapContainer = ref(null)
 const selectedStore = ref<StoreData | null>(null)
 const userLocation = ref({ lng: 116.404, lat: 39.915 }) // 默认位置（北京）
+
+// 检查登录状态
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem(TOKEN_KEY)
+})
+
+// 退出登录
+const logout = () => {
+  // 清除所有本地存储的用户信息
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem('userId')
+  localStorage.removeItem('username')
+  
+  // 清除axios默认请求头
+  delete axios.defaults.headers.common['Authorization']
+  
+  ElMessage.success('已退出登录')
+  
+  // 跳转到登录页
+  router.push('/login')
+}
+
+// 跳转到个人中心
+const goToProfile = () => {
+  router.push('/user')
+}
 
 // 宠物分类
 const petCategories = ref([
@@ -668,6 +708,16 @@ window.createAiChat({
   color: #409eff;
 }
 
+.user-menu {
+  position: relative;
+}
+
+.user-menu .user-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* 宠物分类 */
 .pet-categories {
   display: flex;
@@ -1047,4 +1097,4 @@ window.createAiChat({
   height: 400px;
   border-radius: 4px;
 }
-</style> 
+</style>

@@ -1,0 +1,745 @@
+<template>
+  <div class="store-management">
+    <div class="page-header">
+      <h2>商店商品管理</h2>
+      <button @click="showAddStoreModal = true" class="add-btn">
+        + 添加商店
+      </button>
+    </div>
+
+    <!-- 商店列表 -->
+    <div class="store-list">
+      <div v-for="store in stores" :key="store.id" class="store-card">
+        <div class="store-header">
+          <div class="store-info">
+            <img v-if="store.logoUrl" :src="store.logoUrl" :alt="store.name" class="store-logo">
+            <div class="store-details">
+              <h3>{{ store.name }}</h3>
+              <p class="store-address">{{ store.addressText }}</p>
+              <p class="store-contact">联系电话: {{ store.contactPhone }}</p>
+              <p v-if="store.longitude && store.latitude" class="store-location">
+                位置: {{ store.longitude }}, {{ store.latitude }}
+              </p>
+            </div>
+          </div>
+          <div class="store-actions">
+            <button @click="editStore(store)" class="edit-btn">编辑</button>
+            <button @click="deleteStore(store.id)" class="delete-btn">删除</button>
+          </div>
+        </div>
+        
+        <!-- 商品列表 -->
+        <div class="products-section">
+          <div class="products-header">
+            <h4>商品列表</h4>
+           <button @click="openAddProductModal(store.id)" class="add-product-btn">
+              + 添加商品
+            </button>
+          </div>
+          
+          <div class="products-grid">
+            <div v-for="product in getStoreProducts(store.id)" :key="product.id" class="product-card">
+              <img v-if="product.mainImageUrl" :src="product.mainImageUrl" :alt="product.name" class="product-image">
+              <div class="product-info">
+                <h5>{{ product.name }}</h5>
+                <p class="product-price">¥{{ product.price }}</p>
+                <p class="product-stock">库存: {{ product.stock }}</p>
+                <div v-if="product.breed" class="product-details">
+                  <span>品种: {{ product.breed }}</span>
+                  <span>年龄: {{ product.age }}</span>
+                  <span>性别: {{ product.sex }}</span>
+                </div>
+                <div class="product-actions">
+                  <button @click="editProduct(product)" class="edit-btn">编辑</button>
+                  <button @click="deleteProduct(product.id)" class="delete-btn">删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加/编辑商店模态框 -->
+    <div v-if="showAddStoreModal || showEditStoreModal" class="modal-overlay" @click="closeStoreModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ editingStore ? '编辑商店' : '添加商店' }}</h3>
+          <button @click="closeStoreModal" class="close-btn">×</button>
+        </div>
+        <form @submit.prevent="saveStore" class="modal-form">
+          <div class="form-group">
+            <label>商店名称 *</label>
+            <input v-model="storeForm.name" type="text" required>
+          </div>
+          <div class="form-group">
+            <label>详细地址 *</label>
+            <textarea v-model="storeForm.addressText" required></textarea>
+          </div>
+          <div class="form-group">
+            <label>经度 *</label>
+            <input v-model.number="storeForm.longitude" type="number" step="any" required>
+          </div>
+          <div class="form-group">
+            <label>纬度 *</label>
+            <input v-model.number="storeForm.latitude" type="number" step="any" required>
+          </div>
+          <div class="form-group">
+            <label>商店Logo</label>
+            <input v-model="storeForm.logoUrl" type="url" placeholder="请输入图片URL">
+          </div>
+          <div class="form-group">
+            <label>联系电话</label>
+            <input v-model="storeForm.contactPhone" type="tel">
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="closeStoreModal" class="cancel-btn">取消</button>
+            <button type="submit" class="save-btn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 添加/编辑商品模态框 -->
+    <div v-if="showAddProductModal || showEditProductModal" class="modal-overlay" @click="closeProductModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ editingProduct ? '编辑商品' : '添加商品' }}</h3>
+          <button @click="closeProductModal" class="close-btn">×</button>
+        </div>
+        <form @submit.prevent="saveProduct" class="modal-form">
+          <div class="form-group">
+            <label>商品名称 *</label>
+            <input v-model="productForm.name" type="text" required>
+          </div>
+          <div class="form-group">
+            <label>商品分类 *</label>
+            <select v-model="productForm.categoryId" required>
+              <option value="1">宠物类</option>
+              <option value="2">宠物周边</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>价格 *</label>
+            <input v-model.number="productForm.price" type="number" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>库存 *</label>
+            <input v-model.number="productForm.stock" type="number" required>
+          </div>
+          <div class="form-group">
+            <label>商品主图</label>
+            <input v-model="productForm.mainImageUrl" type="url" placeholder="请输入图片URL">
+          </div>
+          <div class="form-group">
+            <label>介绍视频</label>
+            <input v-model="productForm.videoUrl" type="url" placeholder="请输入视频URL">
+          </div>
+          <div class="form-group">
+            <label>商品描述</label>
+            <textarea v-model="productForm.description"></textarea>
+          </div>
+          
+          <!-- 宠物类特有字段 -->
+          <div v-if="productForm.categoryId == 1" class="pet-fields">
+            <div class="form-group">
+              <label>品种</label>
+              <input v-model="productForm.breed" type="text">
+            </div>
+            <div class="form-group">
+              <label>年龄</label>
+              <input v-model="productForm.age" type="text">
+            </div>
+            <div class="form-group">
+              <label>性别</label>
+              <select v-model="productForm.sex">
+                <option value="">请选择</option>
+                <option value="公">公</option>
+                <option value="母">母</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>体重(kg)</label>
+              <input v-model.number="productForm.weight" type="number" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>颜色</label>
+              <input v-model="productForm.color" type="text">
+            </div>
+            <div class="form-group">
+              <label>健康信息</label>
+              <textarea v-model="productForm.healthInfo"></textarea>
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeProductModal" class="cancel-btn">取消</button>
+            <button type="submit" class="save-btn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { ADMIN_API } from '../../api/config'
+
+interface Store {
+  id: number
+  name: string
+  addressText: string
+  logoUrl?: string
+  contactPhone?: string
+  longitude?: number  // 添加经度字段
+  latitude?: number   // 添加纬度字段
+  createdAt: string
+  updatedAt: string
+}
+
+interface Product {
+  id: number
+  storeId: number
+  categoryId: number
+  name: string
+  breed?: string
+  age?: string
+  sex?: string
+  weight?: number
+  color?: string
+  description?: string
+  healthInfo?: string
+  price: number
+  stock: number
+  mainImageUrl?: string
+  videoUrl?: string
+  averageRating?: number
+  reviewCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+const stores = ref<Store[]>([])
+const products = ref<Product[]>([])
+
+// 商店相关状态
+const showAddStoreModal = ref(false)
+const showEditStoreModal = ref(false)
+const editingStore = ref<Store | null>(null)
+const storeForm = reactive({
+  name: '',
+  addressText: '',
+  longitude: 0,
+  latitude: 0,
+  logoUrl: '',
+  contactPhone: ''
+})
+
+// 商品相关状态
+const showAddProductModal = ref(false)
+const showEditProductModal = ref(false)
+const editingProduct = ref<Product | null>(null)
+const currentStoreId = ref<number | null>(null)
+const productForm = reactive({
+  storeId: 0,
+  categoryId: 1,
+  name: '',
+  breed: '',
+  age: '',
+  sex: '',
+  weight: 0,
+  color: '',
+  description: '',
+  healthInfo: '',
+  price: 0,
+  stock: 0,
+  mainImageUrl: '',
+  videoUrl: ''
+})
+
+// 获取商店列表
+const fetchStores = async () => {
+  try {
+    const response = await fetch(ADMIN_API.STORES.LIST, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await response.json()
+    console.log('商店数据:', data) // 添加日志查看返回的数据结构
+    stores.value = data.records || []
+  } catch (error) {
+    console.error('获取商店列表失败:', error)
+  }
+}
+
+// 获取商品列表
+const fetchProducts = async () => {
+  try {
+    const response = await fetch(ADMIN_API.PRODUCTS.LIST, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await response.json()
+    products.value = data.records || []
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+  }
+}
+
+// 获取指定商店的商品
+const getStoreProducts = (storeId: number) => {
+  return products.value.filter(product => product.storeId === storeId)
+}
+
+// 商店操作
+const editStore = (store: Store) => {
+  editingStore.value = store
+  console.log('编辑商店数据:', store) // 添加日志查看商店数据
+  Object.assign(storeForm, {
+    name: store.name,
+    addressText: store.addressText,
+    logoUrl: store.logoUrl || '',
+    contactPhone: store.contactPhone || '',
+    longitude: store.longitude || 0, // 从store对象中获取经度
+    latitude: store.latitude || 0    // 从store对象中获取纬度
+  })
+  showEditStoreModal.value = true
+}
+
+const deleteStore = async (storeId: number) => {
+  if (confirm('确定要删除这个商店吗？')) {
+    try {
+      await fetch(`${ADMIN_API.STORES.DELETE}/${storeId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      await fetchStores()
+      await fetchProducts()
+    } catch (error) {
+      console.error('删除商店失败:', error)
+    }
+  }
+}
+
+const saveStore = async () => {
+  try {
+    const url = editingStore.value 
+      ? `${ADMIN_API.STORES.UPDATE}/${editingStore.value.id}`
+      : ADMIN_API.STORES.CREATE
+    const method = editingStore.value ? 'PUT' : 'POST'
+    
+    await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(storeForm)
+    })
+    
+    closeStoreModal()
+    await fetchStores()
+  } catch (error) {
+    console.error('保存商店失败:', error)
+  }
+}
+
+const closeStoreModal = () => {
+  showAddStoreModal.value = false
+  showEditStoreModal.value = false
+  editingStore.value = null
+  Object.assign(storeForm, {
+    name: '',
+    addressText: '',
+    longitude: 0,
+    latitude: 0,
+    logoUrl: '',
+    contactPhone: ''
+  })
+}
+
+// 商品操作
+const openAddProductModal = (storeId: number) => {
+  currentStoreId.value = storeId
+  productForm.storeId = storeId
+  showAddProductModal.value = true
+}
+
+const editProduct = (product: Product) => {
+  editingProduct.value = product
+  Object.assign(productForm, product)
+  showEditProductModal.value = true
+}
+
+const deleteProduct = async (productId: number) => {
+  if (confirm('确定要删除这个商品吗？')) {
+    try {
+      await fetch(`${ADMIN_API.PRODUCTS.DELETE}/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      await fetchProducts()
+    } catch (error) {
+      console.error('删除商品失败:', error)
+    }
+  }
+}
+
+const saveProduct = async () => {
+  try {
+    const url = editingProduct.value 
+      ? `${ADMIN_API.PRODUCTS.UPDATE}/${editingProduct.value.id}`
+      : ADMIN_API.PRODUCTS.CREATE
+    const method = editingProduct.value ? 'PUT' : 'POST'
+    
+    await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(productForm)
+    })
+    
+    closeProductModal()
+    await fetchProducts()
+  } catch (error) {
+    console.error('保存商品失败:', error)
+  }
+}
+
+const closeProductModal = () => {
+  showAddProductModal.value = false
+  showEditProductModal.value = false
+  editingProduct.value = null
+  currentStoreId.value = null
+  Object.assign(productForm, {
+    storeId: 0,
+    categoryId: 1,
+    name: '',
+    breed: '',
+    age: '',
+    sex: '',
+    weight: 0,
+    color: '',
+    description: '',
+    healthInfo: '',
+    price: 0,
+    stock: 0,
+    mainImageUrl: '',
+    videoUrl: ''
+  })
+}
+
+onMounted(() => {
+  fetchStores()
+  fetchProducts()
+})
+</script>
+
+<style scoped>
+.store-management {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.add-btn {
+  padding: 8px 16px;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-btn:hover {
+  background: #40a9ff;
+}
+
+.store-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.store-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.store-info {
+  display: flex;
+  gap: 16px;
+}
+
+.store-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.store-details h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.store-address, .store-contact {
+  margin: 4px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.store-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn {
+  padding: 6px 12px;
+  background: #52c41a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-btn {
+  padding: 6px 12px;
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.products-section {
+  margin-top: 20px;
+}
+
+.products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.products-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.add-product-btn {
+  padding: 6px 12px;
+  background: #722ed1;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.product-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.3s;
+}
+
+.product-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.product-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.product-info {
+  padding: 12px;
+}
+
+.product-info h5 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.product-price {
+  color: #ff4d4f;
+  font-weight: bold;
+  font-size: 16px;
+  margin: 4px 0;
+}
+
+.product-stock {
+  color: #666;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 8px 0;
+}
+
+.product-details span {
+  font-size: 12px;
+  color: #666;
+}
+
+.product-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+}
+
+.modal-form {
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-group textarea {
+  height: 80px;
+  resize: vertical;
+}
+
+.pet-fields {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  background: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.save-btn {
+  padding: 8px 16px;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.save-btn:hover {
+  background: #40a9ff;
+}
+</style>

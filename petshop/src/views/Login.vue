@@ -167,7 +167,6 @@ const handleLogin = async () => {
   }
   
   try {
-    // 调试信息
     console.log('准备发送登录请求，URL:', AUTH_API.LOGIN)
     console.log('请求数据:', { username: loginForm.username, password: '***' })
     
@@ -176,16 +175,17 @@ const handleLogin = async () => {
       password: loginForm.password
     })
     
-    // 调试信息
     console.log('登录响应:', response.data)
     
-    // 保存令牌到本地存储 - 修改为使用accessToken字段
+    // 根据后端实际返回结构修改：直接访问 accessToken 和 role
     if (response.data.accessToken) {
       localStorage.setItem(TOKEN_KEY, response.data.accessToken)
       
-      // 打印保存的令牌以检查
+      // 保存用户名用于显示
+      localStorage.setItem('username', loginForm.username)
+      
       console.log('已保存令牌:', response.data.accessToken)
-      console.log('从本地存储中获取令牌:', localStorage.getItem(TOKEN_KEY))
+      console.log('用户角色:', response.data.role)
       
       // 如果用户选择了记住用户名，则保存
       if (loginForm.remember) {
@@ -199,25 +199,22 @@ const handleLogin = async () => {
       // 添加请求头到axios
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`
       
-      // 跳转到首页
-      router.push('/home')
+      // 根据用户角色直接判断并跳转（修改为使用 response.data.role）
+      if (response.data.role === 1) {
+        // 管理员跳转到管理员页面
+        console.log('管理员用户，跳转到管理页面')
+        router.push('/admin')
+      } else {
+        // 普通用户跳转到首页
+        console.log('普通用户，跳转到首页')
+        router.push('/')
+      }
     } else {
       console.error('响应中没有包含令牌')
       alert('登录失败：服务器响应异常')
     }
   } catch (error: any) {
     console.error('登录请求错误:', error)
-    console.error('错误详情:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        baseURL: error.config?.baseURL,
-        headers: error.config?.headers
-      }
-    })
     alert(error.response?.data?.message || '登录失败，请稍后重试')
   }
 }
@@ -511,4 +508,4 @@ label {
 .phone-icon {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231677FF"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>');
 }
-</style> 
+</style>

@@ -9,8 +9,8 @@ export const AUTH_API = {
 
 // 用户相关API
 export const USER_API = {
-  PROFILE: '/api/user/profile',           // 获取用户信息
-  UPDATE_PROFILE: '/api/user/profile',    // 更新用户信息
+  PROFILE: '/api/user/users/me',           // 获取用户信息
+  UPDATE_PROFILE: '/api/user/users/me',    // 更新用户信息
   ADDRESSES: '/api/user/addresses',       // 获取地址列表
   ADD_ADDRESS: '/api/user/addresses',     // 添加地址
   UPDATE_ADDRESS: '/api/user/addresses',  // 更新地址
@@ -34,8 +34,58 @@ export const CART_API = {
 
 // 订单相关API
 export const ORDER_API = {
-  CREATE: '/api/user/orders',     // 创建订单
-  LIST: '/api/user/orders',       // 获取订单列表
-  DETAIL: '/api/user/orders',     // 获取订单详情
-  CANCEL: '/api/user/orders'      // 取消订单
-} 
+  CREATE: '/api/user/orders',
+  LIST: '/api/user/orders',
+  DETAIL: '/api/user/orders',
+  CANCEL: '/api/user/orders'
+}
+
+// 后台管理API
+export const ADMIN_API = {
+  // 商店管理
+  STORES: {
+    LIST: '/api/admin/stores',
+    CREATE: '/api/admin/stores',
+    UPDATE: '/api/admin/stores',
+    DELETE: '/api/admin/stores'
+  },
+  // 商品管理
+  PRODUCTS: {
+    LIST: '/api/admin/products',
+    CREATE: '/api/admin/products',
+    UPDATE: '/api/admin/products',
+    DELETE: '/api/admin/products',
+    DETAIL: '/api/admin/products'
+  },
+  // 用户管理
+  USERS: {
+    LIST: '/api/admin/users',
+    DELETE: '/api/admin/users'
+  },
+  // 订单管理（需要后端实现）
+  ORDERS: {
+    LIST: '/api/admin/orders',
+    UPDATE_STATUS: '/api/admin/orders',
+    DELETE: '/api/admin/orders'
+  },
+  // 文件上传
+  UPLOAD: '/api/admin/upload'
+}
+
+// 订单状态枚举
+export const ORDER_STATUS = {
+  PENDING_PAYMENT: 0, // 待付款
+  PENDING_SHIPMENT: 1, // 待发货
+  PENDING_RECEIPT: 2, // 待收货
+  COMPLETED: 3, // 已完成
+  CANCELLED: 4 // 已取消
+}
+
+// 订单状态文本映射
+export const ORDER_STATUS_TEXT = {
+  [ORDER_STATUS.PENDING_PAYMENT]: '待付款',
+  [ORDER_STATUS.PENDING_SHIPMENT]: '待发货',
+  [ORDER_STATUS.PENDING_RECEIPT]: '待收货',
+  [ORDER_STATUS.COMPLETED]: '已完成',
+  [ORDER_STATUS.CANCELLED]: '已取消'
+}
