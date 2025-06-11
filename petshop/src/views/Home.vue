@@ -75,8 +75,8 @@
               <div class="promotion-name">{{ promotion.name }}</div>
               <div class="promotion-desc">{{ promotion.description }}</div>
               <div class="promotion-price">
-                <span class="current-price">¥{{ promotion.currentPrice }}</span>
-                <span class="original-price">¥{{ promotion.originalPrice }}</span>
+                <span class="current-price">¥{{ typeof promotion.currentPrice === 'number' ? promotion.currentPrice.toFixed(2) : promotion.currentPrice }}</span>
+                <span class="original-price">¥{{ typeof promotion.originalPrice === 'number' ? promotion.originalPrice.toFixed(2) : promotion.originalPrice }}</span>
               </div>
             </div>
           </div>
@@ -525,7 +525,7 @@ const fetchFeaturedProducts = async () => {
         id: promo.id,
         name: promo.name,
         description: promo.description,
-        currentPrice: promo.price * 0.8, // 模拟打折价格
+        currentPrice: Number((promo.price * 0.8).toFixed(2)), // 模拟打折价格，修复精度问题
         originalPrice: promo.price,
         imageUrl: promo.mainImageUrl || '@/assets/homelogo.png'
       }))

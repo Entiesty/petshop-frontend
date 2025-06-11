@@ -5,18 +5,18 @@
       <div class="user-sidebar">
         <div class="user-info">
           <div class="avatar">
-            <img src="../assets/homelogo.png" alt="用户头像" />
+            <img :src="userProfile.avatarUrl || '../assets/homelogo.png'" alt="用户头像" />
             <div class="vip-badge">会员</div>
           </div>
           <div class="user-detail">
-            <div class="username">陈佳怡</div>
-            <div class="phone">138****8888</div>
+            <div class="username">{{ userProfile.nickname || userProfile.username }}</div>
+            <div class="phone">{{ userProfile.phone || '未设置' }}</div>
           </div>
         </div>
         
         <div class="user-menu">
-          <div class="menu-title">收货地址管理</div>
-          <div class="menu-title active">我的订单</div>
+          <div class="menu-title" :class="{ active: activeTab === 'address' }" @click="setActiveTab('address')">收货地址管理</div>
+          <div class="menu-title" :class="{ active: activeTab !== 'address' }">我的订单</div>
           <div class="sub-menu">
             <div class="menu-item" :class="{ active: activeTab === 'all' }" @click="setActiveTab('all')">全部订单</div>
             <div class="menu-item" :class="{ active: activeTab === 'pending' }" @click="setActiveTab('pending')">待付款</div>
@@ -1028,4 +1028,4 @@ onMounted(() => {
     align-self: flex-end;
   }
 }
-</style> 
+</style>

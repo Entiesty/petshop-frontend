@@ -3,20 +3,20 @@
     <div v-if="loading" class="loading-container">
       <el-skeleton style="width: 100%" :rows="10" animated />
     </div>
-    
+
     <template v-else>
       <div class="product-header">
         <el-page-header @back="goBack" :title="product.name" />
       </div>
-      
+
       <div class="product-content">
         <div class="product-banner">
-          <img :src="product.imageUrl || '/assets/product-default.jpg'" :alt="product.name">
+          <img :src="product.mainImageUrl || '/assets/product-default.jpg'" :alt="product.name">
         </div>
-        
+
         <div class="product-info-section">
           <h1 class="product-title">{{ product.name }}</h1>
-          
+
           <div class="product-basic-info">
             <div class="info-item">
               <span class="label">品种:</span>
@@ -28,7 +28,7 @@
             </div>
             <div class="info-item">
               <span class="label">性别:</span>
-              <span class="value">{{ product.gender || '雄性' }}</span>
+              <span class="value">{{ product.sex || '雄性' }}</span>
             </div>
             <div class="info-item">
               <span class="label">体重:</span>
@@ -43,15 +43,15 @@
               <span class="value price">¥ {{ product.price || '6,800' }}</span>
             </div>
           </div>
-          
+
           <div class="product-description">
             <h2>宠物描述</h2>
             <p>{{ product.description || '阳光一只非常活泼可爱的金毛寻回犬，性格温顺亲人，已经养了几个月的他很健康，和非常喜欢和人互动，对特别适合家庭饲养，热爱户外活动，特别适合有小孩子的家庭。' }}</p>
           </div>
-          
+
           <div class="health-info">
             <h2>健康信息</h2>
-            
+
             <div class="health-columns">
               <div class="health-column">
                 <h3>疫苗接种情况:</h3>
@@ -61,7 +61,7 @@
                   <li>细小病毒疫苗 - 已完成</li>
                 </ul>
               </div>
-              
+
               <div class="health-column">
                 <h3>驱虫检查:</h3>
                 <ul>
@@ -72,7 +72,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="store-section">
             <div class="store-info">
               <h2>{{ store?.name || '爱宠之家精品宠物店' }}</h2>
@@ -80,13 +80,13 @@
               <el-button type="primary" size="small" @click="viewStore" class="store-btn">查看店铺全部宠物</el-button>
             </div>
           </div>
-          
+
           <div class="product-actions">
             <el-button type="default" @click="addToFavorites">收藏</el-button>
             <el-button type="primary" @click="addToCart">加入购物车</el-button>
           </div>
         </div>
-        
+
         <div class="reviews-section">
           <h2>用户评价</h2>
           <div class="rating-summary">
@@ -94,7 +94,7 @@
             <div class="rating-stars">★★★★★</div>
             <div class="rating-count">基于 128 条评价</div>
           </div>
-          
+
           <div class="review-list">
             <div class="review-item" v-for="(review, index) in mockReviews" :key="index">
               <div class="reviewer-info">
@@ -109,7 +109,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="view-more-reviews">
             <el-button type="text">查看全部评价 ></el-button>
           </div>
@@ -137,15 +137,18 @@ const product = ref({
   description: '',
   price: 0,
   originalPrice: 0,
-  imageUrl: '',
+  mainImageUrl: '',
   videoUrl: '',
   storeId: 0,
   productType: 0,
   breed: '',
   age: '',
-  gender: '',
+  sex: '',
   weight: '',
-  color: ''
+  color: '',
+  healthInfo: '',
+  averageRating: 0,
+  reviewCount: 0
 })
 const store = ref<any>(null)
 
@@ -192,17 +195,27 @@ const addToFavorites = () => {
 const fetchProductDetail = async () => {
   try {
     loading.value = true
+    console.log('开始获取商品详情，ID:', productId.value) // 调试日志
+
     const response = await axios.get(`/api/user/products/${productId.value}`)
+    console.log('商品详情响应:', response.data) // 调试日志
+
+    // 直接使用后端返回的数据，因为后端返回的是ProductDetailViewDto
     product.value = response.data
-    
-    // 如果商品有店铺ID，则获取店铺信息
-    if (product.value.storeId) {
-      fetchStoreInfo(product.value.storeId)
+
+    // 从商品数据中获取商店信息（后端已经包含在response.data.store中）
+    if (response.data.store) {
+      store.value = response.data.store
+      console.log('商店信息:', store.value) // 调试日志
     }
+
+    loading.value = false
+    console.log('商品详情加载完成:', product.value) // 调试日志
+
   } catch (error) {
     console.error('获取商品详情失败:', error)
     ElMessage.error('获取商品详情失败，请稍后重试')
-    
+
     // 使用模拟数据（实际开发中应删除）
     setTimeout(() => {
       product.value = {
@@ -211,37 +224,26 @@ const fetchProductDetail = async () => {
         description: '阳光一只非常活泼可爱的金毛寻回犬，性格温顺亲人，已经养了几个月的他很健康，和非常喜欢和人互动，对特别适合家庭饲养，热爱户外活动，特别适合有小孩子的家庭。',
         price: 6800,
         originalPrice: 0,
-        imageUrl: '/assets/pets/golden.jpg',
+        mainImageUrl: '/assets/pets/golden.jpg',
         videoUrl: '',
         storeId: 1,
         productType: 1,
         breed: '金毛寻回犬',
         age: '6 个月',
-        gender: '雄性',
+        sex: '雄性',
         weight: '25 kg',
-        color: '浅金色'
+        color: '浅金色',
+        healthInfo: '',
+        averageRating: 0,
+        reviewCount: 0
+      }
+      store.value = {
+        id: 1,
+        name: '爱宠之家精品宠物店',
+        description: '专业宠物用品店，提供优质服务10年，提供优质健康服务'
       }
       loading.value = false
     }, 1000)
-  }
-}
-
-// 获取店铺信息
-const fetchStoreInfo = async (storeId: number) => {
-  try {
-    const response = await axios.get(`/api/user/stores/${storeId}`)
-    store.value = response.data
-  } catch (error) {
-    console.error('获取店铺信息失败:', error)
-    
-    // 使用模拟数据（实际开发中应删除）
-    store.value = {
-      id: 1,
-      name: '爱宠之家精品宠物店',
-      description: '专业宠物用品店，提供优质服务10年，提供优质健康服务',
-      addressText: '上海市浦东新区张江高科技园区科苑路88号',
-      contactPhone: '400-123-4567'
-    }
   }
 }
 
@@ -256,14 +258,14 @@ const addToCart = async () => {
     })
     return
   }
-  
+
   try {
     adding.value = true
     await axios.post('/api/user/cart/items', {
       productId: product.value.id,
       quantity: quantity.value
     })
-    
+
     ElMessage.success('成功加入购物车')
   } catch (error) {
     console.error('添加购物车失败:', error)
@@ -554,10 +556,10 @@ onMounted(() => {
   .product-basic-info {
     grid-template-columns: 1fr;
   }
-  
+
   .health-columns {
     flex-direction: column;
     gap: 20px;
   }
 }
-</style> 
+</style>

@@ -4,7 +4,9 @@
 export const AUTH_API = {
   LOGIN: '/api/user/auth/login',       // 登录接口
   REGISTER: '/api/user/auth/register', // 注册接口
-  LOGOUT: '/api/user/auth/logout'      // 登出接口
+  LOGOUT: '/api/user/auth/logout',     // 登出接口
+  SEND_CODE: '/api/user/auth/send-code', // 发送邮箱验证码
+  LOGIN_BY_CODE: '/api/user/auth/login-by-code' // 邮箱验证码登录
 }
 
 // 用户相关API
@@ -20,7 +22,8 @@ export const USER_API = {
 // 商店相关API
 export const STORE_API = {
   LIST: '/api/user/stores',       // 获取商店列表
-  DETAIL: '/api/user/stores'      // 获取商店详情
+  DETAIL: '/api/user/stores',     // 获取商店详情
+  NEARBY: '/api/user/stores/nearby' // 获取附近商店
 }
 
 // 购物车相关API
@@ -60,7 +63,8 @@ export const ADMIN_API = {
   // 用户管理
   USERS: {
     LIST: '/api/admin/users',
-    DELETE: '/api/admin/users'
+    DELETE: '/api/admin/users',
+    ADDRESSES: '/api/admin/users' // 添加这一行
   },
   // 订单管理（需要后端实现）
   ORDERS: {
