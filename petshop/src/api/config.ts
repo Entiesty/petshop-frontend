@@ -13,10 +13,13 @@ export const AUTH_API = {
 export const USER_API = {
   PROFILE: '/api/user/users/me',           // 获取用户信息
   UPDATE_PROFILE: '/api/user/users/me',    // 更新用户信息
+  UPDATE_AVATAR: '/api/user/users/avatar', // 更新用户头像
+  UPDATE_PASSWORD: '/api/user/users/password', // 修改密码
   ADDRESSES: '/api/user/addresses',       // 获取地址列表
   ADD_ADDRESS: '/api/user/addresses',     // 添加地址
   UPDATE_ADDRESS: '/api/user/addresses',  // 更新地址
-  DELETE_ADDRESS: '/api/user/addresses'   // 删除地址
+  DELETE_ADDRESS: '/api/user/addresses',  // 删除地址
+  SET_DEFAULT_ADDRESS: '/api/user/addresses' // 设置默认地址
 }
 
 // 商店相关API

@@ -7,10 +7,17 @@
           <div class="avatar">
             <img :src="userProfile.avatarUrl || '../assets/homelogo.png'" alt="用户头像" />
             <div class="vip-badge">会员</div>
+            <div class="avatar-edit" @click="showAvatarDialog">
+              <i class="el-icon-edit"></i>
+            </div>
           </div>
           <div class="user-detail">
             <div class="username">{{ userProfile.nickname || userProfile.username }}</div>
             <div class="phone">{{ userProfile.phone || '未设置' }}</div>
+            <div class="user-actions">
+              <el-button type="text" @click="showProfileDialog">编辑资料</el-button>
+              <el-button type="text" @click="showPasswordDialog">修改密码</el-button>
+            </div>
           </div>
         </div>
         
@@ -175,6 +182,107 @@
         </div>
       </template>
     </el-dialog>
+    
+    <!-- 头像更新对话框 -->
+    <el-dialog
+      v-model="avatarDialogVisible"
+      title="更新头像"
+      width="400px"
+    >
+      <el-form>
+        <el-form-item label="头像URL">
+          <el-input v-model="avatarForm.avatarUrl" placeholder="请输入头像图片URL" />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="avatarDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="updateAvatar">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
+    
+    <!-- 个人资料更新对话框 -->
+    <el-dialog
+      v-model="profileDialogVisible"
+      title="编辑个人资料"
+      width="500px"
+    >
+      <el-form 
+        ref="profileFormRef"
+        :model="profileForm"
+        :rules="profileRules"
+        label-width="100px"
+      >
+        <el-form-item label="昵称" prop="nickname">
+          <el-input v-model="profileForm.nickname" placeholder="请输入昵称" />
+        </el-form-item>
+        
+        <el-form-item label="手机号码" prop="phone">
+          <el-input v-model="profileForm.phone" placeholder="请输入手机号码" />
+        </el-form-item>
+        
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="profileDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="updateProfile">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
+    
+    <!-- 密码修改对话框 -->
+    <el-dialog
+      v-model="passwordDialogVisible"
+      title="修改密码"
+      width="500px"
+    >
+      <el-form 
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="100px"
+      >
+        <el-form-item label="当前密码" prop="oldPassword">
+          <el-input 
+            v-model="passwordForm.oldPassword" 
+            type="password"
+            placeholder="请输入当前密码" 
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input 
+            v-model="passwordForm.newPassword" 
+            type="password"
+            placeholder="请输入新密码" 
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input 
+            v-model="passwordForm.confirmPassword" 
+            type="password"
+            placeholder="请再次输入新密码" 
+            show-password
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="passwordDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="updatePassword">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -183,6 +291,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { USER_API } from '../api/config'
 
 // 定义类型
 interface UserProfile {
@@ -191,6 +300,8 @@ interface UserProfile {
   nickname: string;
   avatarUrl: string;
   role: number;
+  phone: string;
+  email: string;
 }
 
 interface Address {
@@ -244,8 +355,13 @@ interface AddressForm {
 const router = useRouter()
 const loading = ref(true)
 const addressDialogVisible = ref(false)
+const avatarDialogVisible = ref(false)
+const profileDialogVisible = ref(false)
+const passwordDialogVisible = ref(false)
 const isEditingAddress = ref(false)
 const addressFormRef = ref<any>(null)
+const profileFormRef = ref<any>(null)
+const passwordFormRef = ref<any>(null)
 const activeTab = ref('all')
 
 // 用户资料
@@ -254,7 +370,9 @@ const userProfile = ref<UserProfile>({
   username: '',
   nickname: '',
   avatarUrl: '',
-  role: 0
+  role: 0,
+  phone: '',
+  email: ''
 })
 
 // 收货地址列表
@@ -276,6 +394,25 @@ const addressForm = reactive<AddressForm>({
   isDefault: false
 })
 
+// 头像表单
+const avatarForm = reactive({
+  avatarUrl: ''
+})
+
+// 个人资料表单
+const profileForm = reactive({
+  nickname: '',
+  phone: '',
+  email: ''
+})
+
+// 密码表单
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
 // 地址表单验证规则
 const addressRules = {
   contactName: [
@@ -292,6 +429,45 @@ const addressRules = {
   street: [
     { required: true, message: '请输入详细地址', trigger: 'blur' },
     { min: 5, max: 100, message: '长度在 5 到 100 个字符', trigger: 'blur' }
+  ]
+}
+
+// 个人资料表单验证规则
+const profileRules = {
+  nickname: [
+    { required: true, message: '请输入昵称', trigger: 'blur' },
+    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+  ],
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  ],
+  email: [
+    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+  ]
+}
+
+// 密码表单验证规则
+const passwordRules = {
+  oldPassword: [
+    { required: true, message: '请输入当前密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (rule: any, value: string, callback: any) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -448,11 +624,11 @@ const saveAddress = async () => {
       
       if (isEditingAddress.value) {
         // 更新地址
-        await axios.put(`/api/user/addresses/${addressForm.id}`, submitData)
+        await axios.put(`${USER_API.ADDRESS_UPDATE}/${addressForm.id}`, submitData)
         ElMessage.success('地址更新成功')
       } else {
         // 新增地址
-        await axios.post('/api/user/addresses', submitData)
+        await axios.post(USER_API.ADDRESS_ADD, submitData)
         ElMessage.success('地址添加成功')
       }
       
@@ -469,7 +645,7 @@ const saveAddress = async () => {
 // 设为默认地址
 const setAsDefault = async (address: Address) => {
   try {
-    await axios.patch(`/api/user/addresses/${address.id}/default`)
+    await axios.patch(`${USER_API.ADDRESS_DEFAULT}/${address.id}`)
     ElMessage.success('默认地址设置成功')
     fetchAddresses()
   } catch (error) {
@@ -498,7 +674,7 @@ const confirmDeleteAddress = (address: Address) => {
 // 删除地址
 const deleteAddress = async (addressId: number) => {
   try {
-    await axios.delete(`/api/user/addresses/${addressId}`)
+    await axios.delete(`${USER_API.ADDRESS_DELETE}/${addressId}`)
     ElMessage.success('地址删除成功')
     fetchAddresses()
   } catch (error) {
@@ -526,7 +702,7 @@ const confirmReceive = async (order: Order) => {
       type: 'warning'
     })
     
-    await axios.post(`/api/user/orders/${order.orderNo}/receive`)
+    await axios.post(`${USER_API.ORDER_RECEIVE}/${order.orderNo}`)
     ElMessage.success('确认收货成功')
     fetchOrders() // 刷新订单信息
   } catch (error) {
@@ -537,16 +713,111 @@ const confirmReceive = async (order: Order) => {
   }
 }
 
+// 显示头像更新对话框
+const showAvatarDialog = () => {
+  avatarForm.avatarUrl = userProfile.value.avatarUrl || ''
+  avatarDialogVisible.value = true
+}
+
+// 显示个人资料更新对话框
+const showProfileDialog = () => {
+  profileForm.nickname = userProfile.value.nickname || ''
+  profileForm.phone = userProfile.value.phone || ''
+  profileForm.email = userProfile.value.email || ''
+  profileDialogVisible.value = true
+}
+
+// 显示密码修改对话框
+const showPasswordDialog = () => {
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordDialogVisible.value = true
+}
+
+// 更新头像
+const updateAvatar = async () => {
+  try {
+    if (!avatarForm.avatarUrl.trim()) {
+      return ElMessage.warning('请输入有效的头像URL')
+    }
+    
+    await axios.put(USER_API.UPDATE_AVATAR, { avatarUrl: avatarForm.avatarUrl })
+    userProfile.value.avatarUrl = avatarForm.avatarUrl
+    avatarDialogVisible.value = false
+    ElMessage.success('头像更新成功')
+  } catch (error) {
+    console.error('更新头像失败:', error)
+    ElMessage.error('更新头像失败，请稍后重试')
+  }
+}
+
+// 更新个人资料
+const updateProfile = async () => {
+  if (!profileFormRef.value) return
+  
+  await profileFormRef.value.validate(async (valid: boolean) => {
+    if (!valid) return
+    
+    try {
+      await axios.put(USER_API.UPDATE_PROFILE, {
+        nickname: profileForm.nickname,
+        phone: profileForm.phone,
+        email: profileForm.email
+      })
+      
+      userProfile.value.nickname = profileForm.nickname
+      userProfile.value.phone = profileForm.phone
+      userProfile.value.email = profileForm.email
+      
+      profileDialogVisible.value = false
+      ElMessage.success('个人资料更新成功')
+    } catch (error) {
+      console.error('更新个人资料失败:', error)
+      ElMessage.error('更新个人资料失败，请稍后重试')
+    }
+  })
+}
+
+// 更新密码
+const updatePassword = async () => {
+  if (!passwordFormRef.value) return
+  
+  await passwordFormRef.value.validate(async (valid: boolean) => {
+    if (!valid) return
+    
+    try {
+      await axios.put(USER_API.UPDATE_PASSWORD, {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      })
+      
+      passwordDialogVisible.value = false
+      ElMessage.success('密码修改成功，请重新登录')
+      
+      // 密码修改成功后，可以选择跳转到登录页或其他操作
+      setTimeout(() => {
+        router.push('/login')
+      }, 1500)
+    } catch (error) {
+      console.error('修改密码失败:', error)
+      ElMessage.error('修改密码失败，请确认当前密码是否正确')
+    }
+  })
+}
+
 // 获取用户信息
 const fetchUserInfo = async () => {
   try {
-    const response = await axios.get('/api/user/users/me')
+    const response = await axios.get(USER_API.PROFILE)
     userProfile.value = {
       id: response.data.id,
       username: response.data.username,
       nickname: response.data.nickname || response.data.username,
       avatarUrl: response.data.avatarUrl || '../assets/homelogo.png',
-      role: response.data.role
+      role: response.data.role,
+      phone: response.data.phone || '',
+      email: response.data.email || ''
     }
   } catch (error) {
     console.error('获取用户信息失败:', error)
@@ -558,7 +829,7 @@ const fetchUserInfo = async () => {
 const fetchAddresses = async () => {
   try {
     addressesLoading.value = true
-    const response = await axios.get('/api/user/addresses')
+    const response = await axios.get(USER_API.ADDRESS_LIST)
     
     if (Array.isArray(response.data)) {
       addresses.value = response.data.map((addr: any) => ({
@@ -587,7 +858,7 @@ const fetchAddresses = async () => {
 const fetchOrders = async () => {
   try {
     ordersLoading.value = true
-    const response = await axios.get('/api/user/orders', {
+    const response = await axios.get(USER_API.ORDER_LIST, {
       params: {
         current: orderCurrentPage.value,
         size: orderPageSize.value
@@ -736,6 +1007,30 @@ onMounted(() => {
   border-radius: 10px;
 }
 
+.avatar-edit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  cursor: pointer;
+}
+
+.avatar-edit i {
+  color: white;
+  font-size: 20px;
+}
+
+.avatar:hover .avatar-edit {
+  opacity: 1;
+}
+
 .user-detail {
   text-align: center;
 }
@@ -749,6 +1044,13 @@ onMounted(() => {
 .phone {
   color: #666;
   font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.user-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
 }
 
 .user-menu {

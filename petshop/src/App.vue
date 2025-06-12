@@ -21,6 +21,8 @@ body {
   color: #333;
   background-color: #fff;
   line-height: 1.5;
+  width: 100%;
+  overflow-x: hidden; /* 防止水平滚动 */
 }
 
 a {
@@ -32,5 +34,6 @@ a {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 </style>

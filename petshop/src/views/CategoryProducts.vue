@@ -320,19 +320,30 @@ onMounted(async () => {
 
 <style scoped>
 .category-products {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 24px;
+  background-color: #f5f5f5;
 }
 
-/* 页面头部 */
-.page-header {
+/* 商品控制 */
+.product-controls {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+/* 商品容器 */
+.products-container {
+  min-height: 400px;
+  width: 100%;
 }
 
 .back-btn {
@@ -367,6 +378,9 @@ onMounted(async () => {
 /* 子分类筛选 */
 .sub-categories {
   margin-bottom: 24px;
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .category-filters {
@@ -394,18 +408,6 @@ onMounted(async () => {
   color: white;
 }
 
-/* 商品控制 */
-.product-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .sort-controls {
   display: flex;
   align-items: center;
@@ -421,19 +423,25 @@ onMounted(async () => {
 
 .view-controls {
   display: flex;
-  gap: 4px;
+  gap: 0; /* 移除按钮之间的间隙 */
 }
 
 .view-controls button {
+  width: 40px;
+  height: 40px;
   padding: 8px;
   border: 1px solid #d9d9d9;
   background: white;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .view-controls button:first-child {
   border-radius: 4px 0 0 4px;
+  border-right: none; /* 确保按钮之间没有双边框 */
 }
 
 .view-controls button:last-child {
@@ -444,11 +452,16 @@ onMounted(async () => {
   background: #1890ff;
   color: white;
   border-color: #1890ff;
+  z-index: 1; /* 确保活动按钮的边框显示在上层 */
 }
 
 /* 商品容器 */
 .products-container {
   min-height: 400px;
+  width: 100%;
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .loading {
@@ -475,11 +488,19 @@ onMounted(async () => {
 /* 商品网格 */
 .products-grid {
   display: grid;
-  gap: 20px;
+  gap: 24px;
+  width: 100%;
 }
 
 .products-grid.grid {
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  max-width: 100%;
+}
+
+@media (min-width: 1200px) {
+  .products-grid.grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .products-grid.list {
@@ -489,31 +510,36 @@ onMounted(async () => {
 /* 商品卡片 */
 .product-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s, box-shadow 0.3s;
   cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .product-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .products-grid.list .product-card {
   display: flex;
+  flex-direction: row;
   align-items: center;
 }
 
 .product-image {
-  height: 200px;
+  height: 220px;
   overflow: hidden;
+  position: relative;
 }
 
 .products-grid.list .product-image {
-  width: 200px;
-  height: 150px;
+  width: 280px;
+  height: 200px;
   flex-shrink: 0;
 }
 
@@ -521,10 +547,18 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.5s;
+}
+
+.product-card:hover .product-image img {
+  transform: scale(1.05);
 }
 
 .product-info {
-  padding: 16px;
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .products-grid.list .product-info {
@@ -604,9 +638,25 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   margin-top: 40px;
+  margin-bottom: 40px;
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* 响应式设计 */
+@media (max-width: 1600px) and (min-width: 1201px) {
+  .products-grid.grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 769px) {
+  .products-grid.grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .category-products {
     padding: 16px;
@@ -629,7 +679,7 @@ onMounted(async () => {
   }
 
   .products-grid.grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .products-grid.list .product-card {
@@ -651,4 +701,4 @@ onMounted(async () => {
     white-space: nowrap;
   }
 }
-</style> 
+</style>
