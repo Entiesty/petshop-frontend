@@ -36,29 +36,43 @@
             <i class="el-icon"><Position /></i>
             导航路线
           </el-button>
+          <el-button type="success" @click="callStore" v-if="store.contactPhone">
+            <i class="el-icon"><Phone /></i>
+            拨打电话
+          </el-button>
+          <el-dropdown @command="handleNavigation">
+            <el-button type="info">
+              更多导航
+              <i class="el-icon el-icon--right">
+                <ArrowDown />
+              </i>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="amap">高德地图导航</el-dropdown-item>
+                <el-dropdown-item command="baidu">百度地图导航</el-dropdown-item>
+                <el-dropdown-item command="tencent">腾讯地图导航</el-dropdown-item>
+                <el-dropdown-item command="copy">复制坐标</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
         
         <div class="store-info-section">
           <h2>店铺信息</h2>
           <div class="store-info-card">
             <div class="store-details">
-              <div class="store-detail-item">
-                <span class="store-detail-label">营业时间</span>
-                <span class="store-detail-value">周一～周五 10:00 - 20:00</span>
-                <span class="store-detail-value">周末及节假日 9:30 - 21:00</span>
-              </div>
-              <div class="store-detail-item">
+              <div class="store-detail-item" v-if="store.contactPhone">
                 <span class="store-detail-label">联系方式</span>
-                <span class="store-detail-value">400-123-4567</span>
-                <span class="store-detail-value">萌宠乐园客服</span>
+                <span class="store-detail-value">{{ store.contactPhone }}</span>
               </div>
-              <div class="store-detail-item">
+              <div class="store-detail-item" v-if="store.addressText">
                 <span class="store-detail-label">店铺地址</span>
-                <span class="store-detail-value">{{ store.addressText || '上海市浦东新区张江高科技园区科苑路88号' }}</span>
+                <span class="store-detail-value">{{ store.addressText }}</span>
               </div>
             </div>
-            <div class="store-description">
-              <p>{{ store.description || '专业宠物用品店，一站式宠物体验，为您和您的爱宠提供最优质服务' }}</p>
+            <div class="store-description" v-if="store.description">
+              <p>{{ store.description }}</p>
             </div>
           </div>
         </div>
@@ -76,7 +90,7 @@
                   @click="viewProduct(product.id)"
                 >
                   <div class="product-image">
-                    <img :src="product.imageUrl || '/assets/pet-default.jpg'" :alt="product.name">
+                    <img :src="product.mainImageUrl || '/assets/pet-default.jpg'" :alt="product.name">
                   </div>
                   <div class="product-info">
                     <div class="product-name">{{ product.name }}</div>
@@ -97,7 +111,7 @@
                   @click="viewProduct(product.id)"
                 >
                   <div class="product-image">
-                    <img :src="product.imageUrl || '/assets/product-default.jpg'" :alt="product.name">
+                    <img :src="product.mainImageUrl || '/assets/product-default.jpg'" :alt="product.name">
                   </div>
                   <div class="product-info">
                     <div class="product-name">{{ product.name }}</div>
@@ -113,24 +127,7 @@
         
         <div class="store-reviews">
           <h2>用户评价</h2>
-          
-          <div class="store-rating">
-            <div class="store-rating-score">4.8</div>
-            <div class="store-rating-stars">★★★★★</div>
-            <div class="store-rating-count">基于 128 条评价</div>
-          </div>
-          
-          <div class="review-list">
-            <div class="review-item" v-for="(review, index) in mockReviews" :key="index">
-              <div class="reviewer-info">
-                <img :src="review.avatar" :alt="review.name" class="reviewer-avatar">
-                <div class="reviewer-name">{{ review.name }}</div>
-                <div class="review-date">{{ review.date }}</div>
-              </div>
-              <div class="review-stars">{{ review.stars }}</div>
-              <div class="review-content">{{ review.content }}</div>
-            </div>
-          </div>
+          <el-empty description="暂无用户评价" />
         </div>
       </div>
     </template>
@@ -147,7 +144,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { Location, Phone, Position } from '@element-plus/icons-vue'
+import { Location, Phone, Position, ArrowDown } from '@element-plus/icons-vue'
 
 // 扩展Window接口以包含AMap
 declare global {
@@ -162,8 +159,19 @@ interface Product {
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
-  productType: number;
+  mainImageUrl: string;
+  storeId: number;
+  categoryId: number;
+  breed?: string;
+  age?: string;
+  sex?: string;
+  weight?: number;
+  color?: string;
+  healthInfo?: string;
+  stock?: number;
+  videoUrl?: string;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 // 定义店铺接口
@@ -211,38 +219,18 @@ const store = ref<Store>({
 // 店铺商品
 const products = ref<Product[]>([])
 
-// 模拟评论数据
-const mockReviews: Review[] = [
-  {
-    name: '张明',
-    avatar: '/assets/avatars/avatar1.jpg',
-    date: '2023-05-15',
-    stars: '★★★★★',
-    content: '狗粮质量真不错里的物美价廉，品质很好，宠物很喜欢，会继续回购！'
-  },
-  {
-    name: '李琳',
-    avatar: '/assets/avatars/avatar2.jpg',
-    date: '2023-04-28',
-    stars: '★★★★★',
-    content: '商品样式很好，服务态度好，就是价格稍微有点贵，但质量确实不错。'
-  },
-  {
-    name: '王强',
-    avatar: '/assets/avatars/avatar3.jpg',
-    date: '2023-04-10',
-    stars: '★★★★★',
-    content: '给猫咪买的玩具真的很好，猫咪很喜欢玩，物有所值，非常满意！'
-  }
-]
+// 评论数据（暂无数据）
+const reviews = ref<Review[]>([])
 
-// 按类型筛选商品
+// 按类别筛选商品（根据categoryId或其他规则）
 const petProducts = computed(() => {
-  return products.value.filter(product => product.productType === 1)
+  // 暂时返回所有商品，后续可根据实际业务规则筛选
+  return products.value
 })
 
-const accessoryProducts = computed(() => {
-  return products.value.filter(product => product.productType === 2)
+const accessoryProducts = computed((): Product[] => {
+  // 暂时返回空数组，后续可根据实际业务规则筛选
+  return []
 })
 
 // 返回上一页
@@ -343,97 +331,76 @@ const getUserLocation = () => {
   }
 }
 
+// 拨打电话
+const callStore = () => {
+  if (!store.value.contactPhone) {
+    ElMessage.warning('店铺电话信息不完整')
+    return
+  }
+  
+  // 直接拨打电话
+  window.location.href = `tel:${store.value.contactPhone}`
+}
+
+// 处理导航选择
+const handleNavigation = (command: string) => {
+  const { latitude, longitude } = store.value
+  
+  if (!latitude || !longitude) {
+    ElMessage.warning('店铺位置信息不完整')
+    return
+  }
+  
+  switch (command) {
+    case 'amap':
+      // 高德地图导航
+      window.open(`https://uri.amap.com/navigation?to=${longitude},${latitude}&mode=car&coordinate=gaode`)
+      break
+    case 'baidu':
+      // 百度地图导航
+      window.open(`https://api.map.baidu.com/direction?destination=${latitude},${longitude}&mode=driving&coord_type=gcj02`)
+      break
+    case 'tencent':
+      // 腾讯地图导航
+      window.open(`https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${store.value.name}&tocoord=${latitude},${longitude}`)
+      break
+    case 'copy':
+      // 复制坐标
+      const coordText = `${latitude},${longitude}`
+      navigator.clipboard.writeText(coordText).then(() => {
+        ElMessage.success('坐标已复制到剪贴板')
+      }).catch(() => {
+        ElMessage.error('复制失败，请手动复制')
+      })
+      break
+    default:
+      break
+  }
+}
+
 // 获取店铺详情
 const fetchStoreDetail = async () => {
   try {
     loading.value = true
     const response = await axios.get(`/api/user/stores/${storeId.value}`)
     store.value = response.data
+    
+    // 如果店铺详情包含商品数据，直接使用
+    if (response.data.products && response.data.products.records) {
+      products.value = response.data.products.records
+    }
   } catch (error) {
     console.error('获取店铺详情失败:', error)
     ElMessage.error('获取店铺详情失败，请稍后重试')
-    
-    // 使用模拟数据（实际开发中应删除）
-    store.value = {
-      id: 1,
-      name: '萌宠乐园',
-      addressText: '上海市浦东新区张江高科技园区科苑路88号',
-      logoUrl: '/assets/stores/store1.jpg',
-      contactPhone: '400-123-4567',
-      latitude: 31.2304,
-      longitude: 121.4737,
-      description: '专业宠物用品店，一站式宠物体验，为您和您的爱宠提供最优质服务'
-    }
   } finally {
     loading.value = false
   }
 }
 
-// 获取店铺商品
-const fetchStoreProducts = async () => {
-  try {
-    const response = await axios.get(`/api/user/stores/${storeId.value}/products`)
-    products.value = response.data
-  } catch (error) {
-    console.error('获取店铺商品失败:', error)
-    
-    // 使用模拟数据（实际开发中应删除）
-    products.value = [
-      {
-        id: 1,
-        name: '皇家小型犬成犬粮 3kg',
-        description: '适合小型犬',
-        price: 198,
-        imageUrl: '/assets/products/dogfood.jpg',
-        productType: 2
-      },
-      {
-        id: 2,
-        name: '海勒六种鱼全猫粮 5.4kg',
-        description: '适合所有猫咪',
-        price: 589,
-        imageUrl: '/assets/products/catfood.jpg',
-        productType: 2
-      },
-      {
-        id: 3,
-        name: 'ZEAL 宠物牛奶 380ml*6',
-        description: '高营养配方',
-        price: 89,
-        imageUrl: '/assets/products/milk.jpg',
-        productType: 2
-      },
-      {
-        id: 4,
-        name: 'KONG 经典漏食玩具 中号',
-        description: '耐咬互动',
-        price: 128,
-        imageUrl: '/assets/products/toy.jpg',
-        productType: 2
-      },
-      {
-        id: 5,
-        name: '福莱尔 伸缩牵引绳 5m',
-        description: '结实耐用',
-        price: 159,
-        imageUrl: '/assets/products/leash.jpg',
-        productType: 2
-      },
-      {
-        id: 6,
-        name: '小佩 智能饮水机 2代',
-        description: '智能过滤',
-        price: 299,
-        imageUrl: '/assets/products/waterer.jpg',
-        productType: 2
-      }
-    ]
-  }
-}
+
 
 onMounted(() => {
   fetchStoreDetail()
-  fetchStoreProducts()
   getUserLocation()
 })
 </script>
@@ -522,6 +489,16 @@ onMounted(() => {
   display: flex;
   gap: 15px;
   margin-bottom: 30px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.store-actions .el-button {
+  min-width: 120px;
+}
+
+.store-actions .el-dropdown {
+  min-width: 120px;
 }
 
 .store-products {
@@ -692,6 +669,22 @@ onMounted(() => {
   
   .store-details {
     grid-template-columns: 1fr;
+  }
+  
+  .store-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .store-actions .el-button,
+  .store-actions .el-dropdown {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .store-info-detail {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 </style> 

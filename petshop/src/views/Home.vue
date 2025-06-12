@@ -85,26 +85,41 @@
 
       <!-- 附近店铺 -->
       <div class="content-section">
-        <div class="section-title">附近店铺</div>
-        <!-- 调试信息 -->
-        <!-- <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; font-size: 12px;">
-          <strong>调试信息:</strong><br>
-          用户位置: {{ userLocation.lng }}, {{ userLocation.lat }}<br>
-          店铺数量: {{ nearbyStores.length }}<br>
-          <button @click="testBeijingLocation" style="margin: 5px; padding: 5px 10px; font-size: 12px;">
-            测试北京坐标
-          </button>
-          <button @click="fetchNearbyStores" style="margin: 5px; padding: 5px 10px; font-size: 12px;">
-            重新获取
-          </button>
-          <details>
-            <summary>原始数据</summary>
-            <pre>{{ JSON.stringify(nearbyStores, null, 2) }}</pre>
-          </details>
-        </div> -->
+        <div class="section-title">
+          <div class="title-content">
+            <span>附近店铺</span>
+            <div class="location-info">
+              <el-icon class="location-icon"><LocationFilled /></el-icon>
+              <span class="location-text">{{ locationMethod }}</span>
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="showLocationSelector"
+                class="location-selector-btn"
+              >
+                <el-icon><Pointer /></el-icon>
+                选择位置
+              </el-button>
+            </div>
+          </div>
+        </div>
         <div class="nearby-stores">
-          <div v-if="nearbyStores.length === 0" style="text-align: center; padding: 20px; color: #666;">
-            暂无附近店铺数据，请检查控制台输出或联系管理员
+          <div v-if="nearbyStores.length === 0" class="empty-state">
+            <div class="empty-icon">🏪</div>
+            <div class="empty-title">暂无附近店铺</div>
+            <div class="empty-description">
+              没有找到您附近的宠物店铺，您可以：
+            </div>
+            <div class="empty-actions">
+              <el-button type="primary" @click="showLocationSelector" round>
+                <el-icon><Pointer /></el-icon>
+                选择其他位置
+              </el-button>
+              <el-button @click="fetchNearbyStores" round>
+                <el-icon><Refresh /></el-icon>
+                重新定位
+              </el-button>
+            </div>
           </div>
           <div class="store-card" v-for="store in nearbyStores" :key="store.id">
             <div class="store-image">
@@ -155,6 +170,32 @@
     <el-dialog v-model="mapDialogVisible" title="店铺位置" width="80%">
       <div class="map-container" ref="mapContainer" style="height: 400px;"></div>
     </el-dialog>
+
+    <!-- 位置选择器弹窗 -->
+    <el-dialog v-model="locationSelectorVisible" title="选择您的位置" width="500px">
+      <div style="margin-bottom: 20px;">
+        <p style="color: #666; font-size: 14px;">
+          如果自动定位不准确，请手动选择您所在的城市：
+        </p>
+      </div>
+      
+      <div class="location-grid">
+        <div 
+          v-for="location in presetLocations" 
+          :key="location.name"
+          class="location-item"
+          @click="selectPresetLocation(location)"
+        >
+          <div class="location-name">{{ location.name }}</div>
+          <div class="location-coords">{{ location.lng }}, {{ location.lat }}</div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 20px; text-align: center;">
+        <el-button @click="locationSelectorVisible = false">取消</el-button>
+        <el-button type="primary" @click="getUserLocation">重新定位</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -163,7 +204,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus'
-import { User, ShoppingCart, HomeFilled, ChatDotRound } from '@element-plus/icons-vue'
+import { User, ShoppingCart, HomeFilled, ChatDotRound, LocationFilled, Pointer, Refresh } from '@element-plus/icons-vue'
 import { TOKEN_KEY } from '../config'
 
 // 扩展Window接口以包含AMap
@@ -198,6 +239,15 @@ const mapDialogVisible = ref(false)
 const mapContainer = ref(null)
 const selectedStore = ref<StoreData | null>(null)
 const userLocation = ref({ lng: 116.404, lat: 39.915 }) // 默认位置（北京）
+const locationSelectorVisible = ref(false)
+const locationAccuracy = ref<number>(0) // 定位精度
+const locationMethod = ref<string>('默认') // 定位方法
+
+// 计算是否在厦门地区
+const isInXiamen = computed(() => {
+  return userLocation.value.lng > 118 && userLocation.value.lng < 124 && 
+         userLocation.value.lat > 24 && userLocation.value.lat < 26
+})
 
 // 检查登录状态
 const isLoggedIn = computed(() => {
@@ -436,10 +486,14 @@ const getUserLocation = () => {
       (position) => {
         console.log('获取位置成功:', position.coords)
         console.log('用户真实坐标 - 经度:', position.coords.longitude, '纬度:', position.coords.latitude)
+        
         userLocation.value = {
           lng: position.coords.longitude,
           lat: position.coords.latitude
         }
+        locationAccuracy.value = position.coords.accuracy || 0
+        locationMethod.value = 'GPS定位'
+        
         console.log('更新用户位置为:', userLocation.value)
         console.log('用户位置详细信息 - 经度:', userLocation.value.lng, '纬度:', userLocation.value.lat)
         fetchNearbyStores()
@@ -447,6 +501,7 @@ const getUserLocation = () => {
       (error) => {
         console.error('获取位置失败:', error)
         console.log('使用默认位置（北京天安门）:', userLocation.value)
+        locationMethod.value = '默认位置'
         fetchNearbyStores() // 使用默认位置获取店铺
       },
       {
@@ -458,9 +513,37 @@ const getUserLocation = () => {
   } else {
     console.error('浏览器不支持地理位置服务')
     console.log('使用默认位置（北京天安门）:', userLocation.value)
+    locationMethod.value = '浏览器不支持'
     fetchNearbyStores() // 使用默认位置获取店铺
   }
 }
+
+// 显示位置选择器
+const showLocationSelector = () => {
+  locationSelectorVisible.value = true
+}
+
+// 选择预设位置
+const selectPresetLocation = (location: { lng: number, lat: number, name: string }) => {
+  console.log('用户手动选择位置:', location.name, location)
+  userLocation.value = { lng: location.lng, lat: location.lat }
+  locationAccuracy.value = 0
+  locationMethod.value = `手动选择(${location.name})`
+  locationSelectorVisible.value = false
+  fetchNearbyStores()
+}
+
+// 预设城市位置
+const presetLocations = [
+  { lng: 118.094, lat: 24.479, name: '厦门市' },
+  { lng: 121.473, lat: 31.231, name: '上海市' }, 
+  { lng: 116.404, lat: 39.915, name: '北京市' },
+  { lng: 113.264, lat: 23.129, name: '广州市' },
+  { lng: 114.314, lat: 22.543, name: '深圳市' },
+  { lng: 120.153, lat: 30.287, name: '杭州市' },
+  { lng: 118.767, lat: 32.041, name: '南京市' },
+  { lng: 104.066, lat: 30.572, name: '成都市' }
+]
 
 // 从API获取附近店铺
 const fetchNearbyStores = async () => {
@@ -471,7 +554,7 @@ const fetchNearbyStores = async () => {
       params: {
         lng: userLocation.value.lng,
         lat: userLocation.value.lat,
-        distance: 50 // 临时扩大到50公里进行测试
+        distance: 50 // 搜索半径50公里
       }
     })
     
@@ -513,19 +596,41 @@ const fetchNearbyStores = async () => {
   }
 }
 
-// 测试北京坐标
-const testBeijingLocation = () => {
-  console.log('=== 开始测试北京坐标 ===')
-  userLocation.value = {
-    lng: 116.404, // 天安门坐标
-    lat: 39.915
-  }
-  console.log('设置测试位置为北京天安门:', userLocation.value)
-  fetchNearbyStores()
-}
+
 
 // 使用默认店铺数据
 const useDefaultStores = () => {
+  // 根据用户位置提供不同地区的默认数据
+  const isInXiamenRegion = userLocation.value.lng >= 117.8 && userLocation.value.lng <= 118.3 && 
+                          userLocation.value.lat >= 24.2 && userLocation.value.lat <= 24.7
+  const isInShanghaiRegion = userLocation.value.lng >= 120 && userLocation.value.lng <= 122 && 
+                            userLocation.value.lat >= 29 && userLocation.value.lat <= 32
+  
+  if (isInXiamenRegion) {
+    nearbyStores.value = [
+      {
+        id: 202,
+        name: '上海宠物之家',
+        address: '徐汇区淮海中路999号',
+        distance: 3.5,
+        businessHours: '10:00-20:00',
+        imageUrl: '@/assets/homelogo.png',
+        longitude: 121.449,
+        latitude: 31.213
+      },
+      {
+        id: 203,
+        name: '浦东宠物天地',
+        address: '浦东新区世纪大道1388号',
+        distance: 4.8,
+        businessHours: '09:30-21:30',
+        imageUrl: '@/assets/homelogo.png',
+        longitude: 121.525,
+        latitude: 31.226
+      }
+    ]
+  } else {
+    // 北京地区的默认店铺数据
   nearbyStores.value = [
     {
       id: 1,
@@ -558,6 +663,7 @@ const useDefaultStores = () => {
       latitude: 39.9088
     }
   ]
+  }
 }
 
 // 获取热门宠物和促销商品
@@ -869,12 +975,53 @@ onMounted(() => {
 
 /* 章节标题 */
 .section-title {
-  padding: 10px 0;
+  padding: 15px 0;
   font-size: 20px;
   font-weight: bold;
   color: #333;
   border-bottom: 2px solid #f0f0f0;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.title-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9fa;
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 1px solid #e9ecef;
+}
+
+.location-icon {
+  color: #409eff;
+  font-size: 16px;
+}
+
+.location-text {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
+.location-selector-btn {
+  border-radius: 15px;
+  padding: 8px 15px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.location-selector-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
 }
 
 /* 热门宠物 */
@@ -1025,74 +1172,164 @@ onMounted(() => {
 
 /* 附近店铺 */
 .nearby-stores {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 25px;
 }
 
 .store-card {
   display: flex;
-  width: 100%;
-  background-color: white;
-  border-radius: 8px;
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+  border-radius: 15px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+}
+
+.store-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
 }
 
 .store-image {
-  width: 150px;
-  height: 150px;
-  min-width: 150px;
+  width: 140px;
+  height: 140px;
+  min-width: 140px;
   overflow: hidden;
+  position: relative;
 }
 
 .store-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.store-card:hover .store-image img {
+  transform: scale(1.1);
 }
 
 .store-info {
   flex: 1;
-  padding: 15px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
 }
 
 .store-name {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 18px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  color: #2c3e50;
+  line-height: 1.3;
 }
 
-.store-address, .store-distance, .store-hours {
+.store-address {
   font-size: 14px;
-  color: #666;
-  margin-bottom: 5px;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.store-address::before {
+  content: "📍";
+  font-size: 12px;
+}
+
+.store-distance {
+  font-size: 13px;
+  color: #27ae60;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.store-hours {
+  font-size: 13px;
+  color: #95a5a6;
+  margin-bottom: 15px;
 }
 
 .store-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: auto;
 }
 
 .map-btn, .detail-btn {
-  padding: 8px 15px;
+  flex: 1;
+  padding: 10px 15px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-align: center;
 }
 
 .map-btn {
-  background-color: #67c23a;
+  background: linear-gradient(135deg, #67c23a, #85ce61);
   color: white;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
 }
 
 .map-btn:hover {
-  background-color: #85ce61;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(103, 194, 58, 0.4);
+}
+
+.detail-btn {
+  background: linear-gradient(135deg, #409eff, #66b1ff);
+  color: white;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.detail-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+}
+
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(145deg, #f8f9fa, #ffffff);
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+  border: 2px dashed #e9ecef;
+  margin: 20px 0;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 12px;
+}
+
+.empty-description {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.empty-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* 底部导航 - 只在移动端显示 */
@@ -1156,6 +1393,38 @@ onMounted(() => {
     gap: 10px;
   }
   
+  /* 位置信息响应式 */
+  .title-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .location-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  /* 附近店铺响应式 */
+  .nearby-stores {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .store-card {
+    flex-direction: column;
+  }
+  
+  .store-image {
+    width: 100%;
+    height: 200px;
+    min-width: auto;
+  }
+  
+  .store-info {
+    padding: 15px;
+  }
+  
   .hot-pets {
     overflow-x: auto;
     flex-wrap: nowrap;
@@ -1171,11 +1440,11 @@ onMounted(() => {
     height: 150px;
   }
   
-  .store-card, .promotion-card {
+  .promotion-card {
     flex-direction: column;
   }
   
-  .store-image, .promotion-image {
+  .promotion-image {
     width: 100%;
     height: 180px;
     min-width: auto;
@@ -1185,6 +1454,21 @@ onMounted(() => {
     display: flex;
     justify-content: space-around;
   }
+  
+  /* 空状态响应式 */
+  .empty-state {
+    padding: 40px 15px;
+    margin: 15px 0;
+  }
+  
+  .empty-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .empty-actions .el-button {
+    width: 200px;
+  }
 }
 
 /* 地图容器样式 */
@@ -1192,5 +1476,45 @@ onMounted(() => {
   width: 100%;
   height: 400px;
   border-radius: 4px;
+}
+
+/* 位置选择器样式 */
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.location-item {
+  padding: 15px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.location-item:hover {
+  border-color: #409eff;
+  background-color: #f0f9ff;
+  transform: translateY(-2px);
+}
+
+.location-name {
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.location-coords {
+  font-size: 12px;
+  color: #999;
+}
+
+@media (max-width: 768px) {
+  .location-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -171,6 +171,21 @@
           />
         </el-form-item>
         
+        <el-form-item label="地图选点">
+          <div class="map-selector">
+            <div class="map-container" ref="addressMapContainer" style="height: 300px; border: 1px solid #ddd; border-radius: 4px;"></div>
+            <div class="map-actions">
+              <el-button size="small" @click="getCurrentLocation">获取当前位置</el-button>
+              <el-button size="small" @click="searchAddress" :disabled="!addressForm.street">搜索地址</el-button>
+              <el-button size="small" @click="clearMapSelection">清除选择</el-button>
+            </div>
+            <div class="selected-location" v-if="selectedLocation.address">
+              <span class="location-label">已选位置：</span>
+              <span class="location-text">{{ selectedLocation.address }}</span>
+            </div>
+          </div>
+        </el-form-item>
+        
         <el-form-item>
           <el-checkbox v-model="addressForm.isDefault">设为默认地址</el-checkbox>
         </el-form-item>
@@ -326,6 +341,13 @@ import { USER_API } from '../api/config'
 // 导入省市区数据
 import { regionData } from 'element-china-area-data'
 
+// 扩展Window接口以包含AMap
+declare global {
+  interface Window {
+    AMap: any;
+  }
+}
+
 // 定义类型
 interface UserProfile {
   id: number;
@@ -397,6 +419,16 @@ const profileFormRef = ref<any>(null)
 const passwordFormRef = ref<any>(null)
 const activeTab = ref('all')
 const avatarUploading = ref(false)
+const addressMapContainer = ref<HTMLElement>()
+const addressMap = ref<any>(null)
+const addressMarker = ref<any>(null)
+
+// 地图选择的位置信息
+const selectedLocation = ref({
+  lng: 0,
+  lat: 0,
+  address: ''
+})
 
 // 用户资料
 const userProfile = ref<UserProfile>({
@@ -564,6 +596,11 @@ const addNewAddress = () => {
   isEditingAddress.value = false
   resetAddressForm()
   addressDialogVisible.value = true
+  
+  // 对话框显示后初始化地图
+  setTimeout(() => {
+    initAddressMap()
+  }, 300)
 }
 
 // 编辑地址
@@ -582,6 +619,11 @@ const editAddress = (address: Address) => {
   addressForm.isDefault = address.isDefault
   
   addressDialogVisible.value = true
+  
+  // 对话框显示后初始化地图
+  setTimeout(() => {
+    initAddressMap()
+  }, 300)
 }
 
 // 重置地址表单
@@ -971,6 +1013,199 @@ const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return date.toLocaleString()
+}
+
+// 地图相关方法
+const initAddressMap = () => {
+  if (!window.AMap || !addressMapContainer.value) return
+  
+  // 创建地图
+  addressMap.value = new window.AMap.Map(addressMapContainer.value, {
+    zoom: 15,
+    center: [116.404, 39.915] // 默认北京位置
+  })
+  
+  // 添加点击事件
+  addressMap.value.on('click', (e: any) => {
+    const lng = e.lnglat.getLng()
+    const lat = e.lnglat.getLat()
+    
+    // 清除之前的标记
+    if (addressMarker.value) {
+      addressMap.value.remove(addressMarker.value)
+    }
+    
+    // 添加新标记
+    addressMarker.value = new window.AMap.Marker({
+      position: [lng, lat],
+      map: addressMap.value
+    })
+    
+    // 逆地理编码获取地址
+    const geocoder = new window.AMap.Geocoder()
+    geocoder.getAddress([lng, lat], (status: string, result: any) => {
+      if (status === 'complete' && result.regeocode) {
+        const addressComponent = result.regeocode.addressComponent
+        const formattedAddress = result.regeocode.formattedAddress
+        
+        selectedLocation.value = {
+          lng,
+          lat,
+          address: formattedAddress
+        }
+        
+        // 自动填充地址信息
+        if (addressComponent.province) {
+          // 根据地址信息更新表单
+          addressForm.province = addressComponent.province
+          addressForm.city = addressComponent.city
+          addressForm.district = addressComponent.district
+          addressForm.street = addressComponent.township + addressComponent.street
+          
+          // 更新省市区选择器
+          addressForm.region = [
+            addressComponent.province,
+            addressComponent.city,
+            addressComponent.district
+          ]
+        }
+      }
+    })
+  })
+}
+
+// 获取当前位置
+const getCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    ElMessage.warning('浏览器不支持地理位置服务')
+    return
+  }
+  
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lng = position.coords.longitude
+      const lat = position.coords.latitude
+      
+      if (addressMap.value) {
+        addressMap.value.setCenter([lng, lat])
+        
+        // 清除之前的标记
+        if (addressMarker.value) {
+          addressMap.value.remove(addressMarker.value)
+        }
+        
+        // 添加当前位置标记
+        addressMarker.value = new window.AMap.Marker({
+          position: [lng, lat],
+          map: addressMap.value
+        })
+        
+        // 逆地理编码获取地址
+        const geocoder = new window.AMap.Geocoder()
+        geocoder.getAddress([lng, lat], (status: string, result: any) => {
+          if (status === 'complete' && result.regeocode) {
+            const addressComponent = result.regeocode.addressComponent
+            const formattedAddress = result.regeocode.formattedAddress
+            
+            selectedLocation.value = {
+              lng,
+              lat,
+              address: formattedAddress
+            }
+            
+            // 自动填充地址信息
+            if (addressComponent.province) {
+              addressForm.province = addressComponent.province
+              addressForm.city = addressComponent.city
+              addressForm.district = addressComponent.district
+              addressForm.street = addressComponent.township + addressComponent.street
+              
+              addressForm.region = [
+                addressComponent.province,
+                addressComponent.city,
+                addressComponent.district
+              ]
+            }
+          }
+        })
+      }
+      
+      ElMessage.success('位置获取成功')
+    },
+    (error) => {
+      console.error('获取位置失败:', error)
+      ElMessage.error('获取位置失败，请检查浏览器定位权限')
+    },
+    {
+      timeout: 10000,
+      enableHighAccuracy: true
+    }
+  )
+}
+
+// 搜索地址
+const searchAddress = () => {
+  if (!addressForm.street.trim()) {
+    ElMessage.warning('请先输入详细地址')
+    return
+  }
+  
+  if (!window.AMap) {
+    ElMessage.warning('地图服务暂不可用')
+    return
+  }
+  
+  const geocoder = new window.AMap.Geocoder()
+  const searchText = `${addressForm.province} ${addressForm.city} ${addressForm.district} ${addressForm.street}`
+  
+  geocoder.getLocation(searchText, (status: string, result: any) => {
+    if (status === 'complete' && result.geocodes.length > 0) {
+      const location = result.geocodes[0].location
+      const lng = location.getLng()
+      const lat = location.getLat()
+      
+      if (addressMap.value) {
+        addressMap.value.setCenter([lng, lat])
+        
+        // 清除之前的标记
+        if (addressMarker.value) {
+          addressMap.value.remove(addressMarker.value)
+        }
+        
+        // 添加搜索结果标记
+        addressMarker.value = new window.AMap.Marker({
+          position: [lng, lat],
+          map: addressMap.value
+        })
+        
+        selectedLocation.value = {
+          lng,
+          lat,
+          address: result.geocodes[0].formattedAddress
+        }
+        
+        ElMessage.success('地址搜索成功')
+      }
+    } else {
+      ElMessage.error('地址搜索失败，请检查地址是否正确')
+    }
+  })
+}
+
+// 清除地图选择
+const clearMapSelection = () => {
+  if (addressMarker.value && addressMap.value) {
+    addressMap.value.remove(addressMarker.value)
+    addressMarker.value = null
+  }
+  
+  selectedLocation.value = {
+    lng: 0,
+    lat: 0,
+    address: ''
+  }
+  
+  ElMessage.success('已清除地图选择')
 }
 
 // 获取所有数据
@@ -1471,5 +1706,42 @@ onMounted(() => {
   .order-actions {
     align-self: flex-end;
   }
+}
+
+/* 地图选择器样式 */
+.map-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.map-container {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.map-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.selected-location {
+  padding: 10px;
+  background-color: #f0f9ff;
+  border: 1px solid #409eff;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.location-label {
+  font-weight: bold;
+  color: #409eff;
+}
+
+.location-text {
+  color: #333;
+  margin-left: 5px;
 }
 </style>
