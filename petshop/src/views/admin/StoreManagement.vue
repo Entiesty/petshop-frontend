@@ -418,15 +418,15 @@ const editStore = async (store: Store) => {
   } catch (error) {
     console.error('获取商店详情失败:', error)
     // 如果详情接口失败，使用列表数据作为后备
-    Object.assign(storeForm, {
-      name: store.name,
-      addressText: store.addressText,
-      logoUrl: store.logoUrl || '',
-      contactPhone: store.contactPhone || '',
+  Object.assign(storeForm, {
+    name: store.name,
+    addressText: store.addressText,
+    logoUrl: store.logoUrl || '',
+    contactPhone: store.contactPhone || '',
       longitude: store.longitude || 0,
       latitude: store.latitude || 0
-    })
-    showEditStoreModal.value = true
+  })
+  showEditStoreModal.value = true
   }
 }
 

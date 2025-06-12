@@ -86,7 +86,20 @@
       <!-- 附近店铺 -->
       <div class="content-section">
         <div class="section-title">附近店铺</div>
+        <!-- 调试信息 -->
+        <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; font-size: 12px;">
+          <strong>调试信息:</strong><br>
+          用户位置: {{ userLocation.lng }}, {{ userLocation.lat }}<br>
+          店铺数量: {{ nearbyStores.length }}<br>
+          <details>
+            <summary>原始数据</summary>
+            <pre>{{ JSON.stringify(nearbyStores, null, 2) }}</pre>
+          </details>
+        </div>
         <div class="nearby-stores">
+          <div v-if="nearbyStores.length === 0" style="text-align: center; padding: 20px; color: #666;">
+            暂无附近店铺数据，请检查控制台输出或联系管理员
+          </div>
           <div class="store-card" v-for="store in nearbyStores" :key="store.id">
             <div class="store-image">
               <img :src="store.imageUrl || '@/assets/homelogo.png'" :alt="store.name">
@@ -230,13 +243,13 @@ const fetchCategories = async () => {
     console.error('获取分类数据失败:', error)
     // 使用默认分类数据作为后备
     petCategories.value = [
-      { id: 1, name: '猫咪', iconUrl: '@/assets/homelogo.png' },
-      { id: 2, name: '狗狗', iconUrl: '@/assets/homelogo.png' },
-      { id: 3, name: '兔子', iconUrl: '@/assets/homelogo.png' },
-      { id: 4, name: '鸟类', iconUrl: '@/assets/homelogo.png' },
-      { id: 5, name: '水族', iconUrl: '@/assets/homelogo.png' },
-      { id: 6, name: '仓鼠', iconUrl: '@/assets/homelogo.png' },
-      { id: 7, name: '爬虫', iconUrl: '@/assets/homelogo.png' }
+  { id: 1, name: '猫咪', iconUrl: '@/assets/homelogo.png' },
+  { id: 2, name: '狗狗', iconUrl: '@/assets/homelogo.png' },
+  { id: 3, name: '兔子', iconUrl: '@/assets/homelogo.png' },
+  { id: 4, name: '鸟类', iconUrl: '@/assets/homelogo.png' },
+  { id: 5, name: '水族', iconUrl: '@/assets/homelogo.png' },
+  { id: 6, name: '仓鼠', iconUrl: '@/assets/homelogo.png' },
+  { id: 7, name: '爬虫', iconUrl: '@/assets/homelogo.png' }
     ]
   }
 }
@@ -410,22 +423,33 @@ const renderMap = () => {
 
 // 获取用户位置
 const getUserLocation = () => {
+  console.log('开始获取用户位置...')
+  
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log('获取位置成功:', position.coords)
         userLocation.value = {
           lng: position.coords.longitude,
           lat: position.coords.latitude
         }
+        console.log('更新用户位置为:', userLocation.value)
         fetchNearbyStores()
       },
       (error) => {
         console.error('获取位置失败:', error)
+        console.log('使用默认位置（北京天安门）:', userLocation.value)
         fetchNearbyStores() // 使用默认位置获取店铺
+      },
+      {
+        timeout: 10000, // 10秒超时
+        enableHighAccuracy: true, // 高精度
+        maximumAge: 300000 // 5分钟内的位置缓存有效
       }
     )
   } else {
     console.error('浏览器不支持地理位置服务')
+    console.log('使用默认位置（北京天安门）:', userLocation.value)
     fetchNearbyStores() // 使用默认位置获取店铺
   }
 }
@@ -443,16 +467,21 @@ const fetchNearbyStores = async () => {
     
     if (response.data && Array.isArray(response.data)) {
       // 转换响应数据格式
-      nearbyStores.value = response.data.map((store: any) => ({
-        id: store.id,
-        name: store.name,
-        address: store.addressText,
-        distance: (store.distance || 0).toFixed(1),
-        businessHours: store.businessHours || '09:00-21:00',
-        imageUrl: store.logoUrl || '@/assets/homelogo.png',
-        longitude: store.longitude,
-        latitude: store.latitude
-      }))
+      nearbyStores.value = response.data.map((store: any) => {
+        console.log('处理店铺数据:', store)
+        return {
+          id: store.storeId, // 后端字段是storeId
+          name: store.name,
+          address: store.addressText, // 后端字段是addressText  
+          distance: parseFloat((store.distance || 0).toFixed(1)),
+          businessHours: store.businessHours || '09:00-21:00',
+          imageUrl: store.logoUrl || '@/assets/homelogo.png', // 后端字段是logoUrl
+          longitude: store.longitude,
+          latitude: store.latitude
+        }
+      })
+      
+      console.log('转换后的店铺数据:', nearbyStores.value)
     }
   } catch (error) {
     console.error('获取附近店铺失败:', error)
@@ -655,13 +684,13 @@ onMounted(() => {
   // 加载高德地图API
   if (!window.AMap) {
     const script = document.createElement('script')
-    script.src = 'https://webapi.amap.com/maps?v=2.0&key=您的高德地图Key'
+    script.src = 'https://webapi.amap.com/maps?v=2.0&key=66d6616317a208714cc4133d3d09cf57'
     script.async = true
     document.head.appendChild(script)
   }
   
 
-})
+    })
 </script>
 
 <style scoped>
