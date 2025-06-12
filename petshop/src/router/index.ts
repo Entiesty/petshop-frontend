@@ -8,6 +8,7 @@ import User from '../views/User.vue'
 import ProductDetail from '../views/ProductDetail.vue'
 import StoreDetail from '../views/StoreDetail.vue'
 import CategoryProducts from '../views/CategoryProducts.vue'
+import SearchResults from '../views/SearchResults.vue' // 添加搜索结果页面导入
 import AIAssistant from '../views/AIAssistant.vue'
 import { TOKEN_KEY } from '../config'
 
@@ -88,6 +89,11 @@ const router = createRouter({
       path: '/category/:id',
       name: 'CategoryProducts',
       component: CategoryProducts
+    },
+    {
+      path: '/search',
+      name: 'SearchResults',
+      component: SearchResults
     },
     {
       path: '/ai-assistant',

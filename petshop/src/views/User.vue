@@ -42,7 +42,8 @@
           </div>
           
           <div class="address-list">
-            <div class="address-item" v-for="(address, index) in addresses" :key="index">
+            <el-empty v-if="addresses.length === 0" description="暂无收货地址"></el-empty>
+            <div class="address-item" v-for="(address, index) in addresses" :key="address.id">
               <div class="address-content">
                 <div class="contact-info">
                   <span class="contact-name">{{ address.contactName }}</span>
@@ -190,7 +191,37 @@
       width="400px"
     >
       <el-form>
-        <el-form-item label="头像URL">
+        <el-form-item label="头像图片">
+          <div class="file-upload-group">
+            <input 
+              ref="avatarFileInput" 
+              type="file" 
+              accept="image/*" 
+              @change="handleAvatarUpload" 
+              style="display: none;"
+            >
+            <div class="upload-area" @click="triggerAvatarUpload">
+              <div v-if="avatarForm.avatarUrl" class="preview-container">
+                <img :src="avatarForm.avatarUrl" alt="头像预览" class="avatar-preview">
+                <div class="upload-overlay">
+                  <span>点击更换图片</span>
+                </div>
+              </div>
+              <div v-else class="upload-placeholder">
+                <span>点击上传头像图片</span>
+              </div>
+            </div>
+            <button 
+              v-if="avatarForm.avatarUrl" 
+              type="button" 
+              @click="clearAvatar" 
+              class="clear-btn"
+            >
+              清除图片
+            </button>
+          </div>
+        </el-form-item>
+        <el-form-item label="或直接输入URL">
           <el-input v-model="avatarForm.avatarUrl" placeholder="请输入头像图片URL" />
         </el-form-item>
       </el-form>
@@ -292,6 +323,8 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { USER_API } from '../api/config'
+// 导入省市区数据
+import { regionData } from 'element-china-area-data'
 
 // 定义类型
 interface UserProfile {
@@ -363,6 +396,7 @@ const addressFormRef = ref<any>(null)
 const profileFormRef = ref<any>(null)
 const passwordFormRef = ref<any>(null)
 const activeTab = ref('all')
+const avatarUploading = ref(false)
 
 // 用户资料
 const userProfile = ref<UserProfile>({
@@ -398,6 +432,8 @@ const addressForm = reactive<AddressForm>({
 const avatarForm = reactive({
   avatarUrl: ''
 })
+
+const avatarFileInput = ref<HTMLInputElement>()
 
 // 个人资料表单
 const profileForm = reactive({
@@ -471,42 +507,8 @@ const passwordRules = {
   ]
 }
 
-// 省市区数据（简化版）
-const regionOptions = [
-  {
-    value: '北京市',
-    label: '北京市',
-    children: [
-      {
-        value: '北京市',
-        label: '北京市',
-        children: [
-          { value: '朝阳区', label: '朝阳区' },
-          { value: '海淀区', label: '海淀区' },
-          { value: '西城区', label: '西城区' },
-          { value: '东城区', label: '东城区' }
-        ]
-      }
-    ]
-  },
-  {
-    value: '上海市',
-    label: '上海市',
-    children: [
-      {
-        value: '上海市',
-        label: '上海市',
-        children: [
-          { value: '浦东新区', label: '浦东新区' },
-          { value: '黄浦区', label: '黄浦区' },
-          { value: '徐汇区', label: '徐汇区' },
-          { value: '静安区', label: '静安区' }
-        ]
-      }
-    ]
-  }
-  // 省略其他省市区数据
-]
+// 使用element-china-area-data提供的省市区数据
+const regionOptions = regionData
 
 // 根据Tab筛选订单
 const filteredOrders = computed(() => {
@@ -624,11 +626,11 @@ const saveAddress = async () => {
       
       if (isEditingAddress.value) {
         // 更新地址
-        await axios.put(`${USER_API.ADDRESS_UPDATE}/${addressForm.id}`, submitData)
+        await axios.put(`${USER_API.UPDATE_ADDRESS}/${addressForm.id}`, submitData)
         ElMessage.success('地址更新成功')
       } else {
         // 新增地址
-        await axios.post(USER_API.ADDRESS_ADD, submitData)
+        await axios.post(USER_API.ADD_ADDRESS, submitData)
         ElMessage.success('地址添加成功')
       }
       
@@ -645,7 +647,7 @@ const saveAddress = async () => {
 // 设为默认地址
 const setAsDefault = async (address: Address) => {
   try {
-    await axios.patch(`${USER_API.ADDRESS_DEFAULT}/${address.id}`)
+    await axios.patch(`${USER_API.ADDRESS_DEFAULT}/${address.id}/default`)
     ElMessage.success('默认地址设置成功')
     fetchAddresses()
   } catch (error) {
@@ -674,7 +676,7 @@ const confirmDeleteAddress = (address: Address) => {
 // 删除地址
 const deleteAddress = async (addressId: number) => {
   try {
-    await axios.delete(`${USER_API.ADDRESS_DELETE}/${addressId}`)
+    await axios.delete(`${USER_API.DELETE_ADDRESS}/${addressId}`)
     ElMessage.success('地址删除成功')
     fetchAddresses()
   } catch (error) {
@@ -735,11 +737,73 @@ const showPasswordDialog = () => {
   passwordDialogVisible.value = true
 }
 
+// 触发文件选择
+const triggerAvatarUpload = () => {
+  avatarFileInput.value?.click()
+}
+
+// 处理头像上传
+const handleAvatarUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('请选择图片文件')
+    return
+  }
+  
+  // 验证文件大小（限制为5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过5MB')
+    return
+  }
+  
+  avatarUploading.value = true
+  
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    // 使用用户的头像上传接口
+    const response = await fetch(USER_API.UPLOAD_AVATAR, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: formData
+    })
+    
+    if (!response.ok) {
+      throw new Error('上传失败')
+    }
+    
+    const data = await response.json()
+    avatarForm.avatarUrl = data.fileUrl
+    
+    ElMessage.success('头像上传成功！')
+  } catch (error: any) {
+    console.error('上传失败:', error)
+    ElMessage.error(`上传失败: ${error.message || '未知错误'}`)
+  } finally {
+    avatarUploading.value = false
+    // 清空input的值，允许重复选择同一文件
+    if (target) target.value = ''
+  }
+}
+
+// 清除头像
+const clearAvatar = () => {
+  avatarForm.avatarUrl = ''
+}
+
 // 更新头像
 const updateAvatar = async () => {
   try {
     if (!avatarForm.avatarUrl.trim()) {
-      return ElMessage.warning('请输入有效的头像URL')
+      return ElMessage.warning('请上传头像或输入有效的头像URL')
     }
     
     await axios.put(USER_API.UPDATE_AVATAR, { avatarUrl: avatarForm.avatarUrl })
@@ -940,6 +1004,84 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 文件上传相关样式 */
+.file-upload-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.upload-area {
+  width: 150px;
+  height: 150px;
+  border: 2px dashed #dcdfe6;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-area:hover {
+  border-color: #409eff;
+}
+
+.upload-placeholder {
+  color: #909399;
+  font-size: 14px;
+  text-align: center;
+  padding: 10px;
+}
+
+.preview-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.avatar-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.preview-container:hover .upload-overlay {
+  opacity: 1;
+}
+
+.clear-btn {
+  margin-top: 5px;
+  padding: 5px 10px;
+  background-color: #f56c6c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  background-color: #e74c3c;
+}
+
 .user-container {
   width: 100%;
   min-height: 100vh;

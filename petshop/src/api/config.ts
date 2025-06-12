@@ -14,12 +14,13 @@ export const USER_API = {
   PROFILE: '/api/user/users/me',           // 获取用户信息
   UPDATE_PROFILE: '/api/user/users/me',    // 更新用户信息
   UPDATE_AVATAR: '/api/user/users/avatar', // 更新用户头像
+  UPLOAD_AVATAR: '/api/user/users/avatar/upload', // 上传用户头像
   UPDATE_PASSWORD: '/api/user/users/password', // 修改密码
-  ADDRESSES: '/api/user/addresses',       // 获取地址列表
+  ADDRESS_LIST: '/api/user/addresses',       // 获取地址列表
   ADD_ADDRESS: '/api/user/addresses',     // 添加地址
   UPDATE_ADDRESS: '/api/user/addresses',  // 更新地址
   DELETE_ADDRESS: '/api/user/addresses',  // 删除地址
-  SET_DEFAULT_ADDRESS: '/api/user/addresses' // 设置默认地址
+  ADDRESS_DEFAULT: '/api/user/addresses' // 设置默认地址
 }
 
 // 商店相关API
@@ -27,6 +28,13 @@ export const STORE_API = {
   LIST: '/api/user/stores',       // 获取商店列表
   DETAIL: '/api/user/stores',     // 获取商店详情
   NEARBY: '/api/user/stores/nearby' // 获取附近商店
+}
+
+// 产品相关API
+export const PRODUCT_API = {
+  LIST: '/api/user/products',       // 获取产品列表
+  DETAIL: '/api/user/products',     // 获取产品详情
+  SEARCH: '/api/user/products/search' // 搜索产品
 }
 
 // 购物车相关API
