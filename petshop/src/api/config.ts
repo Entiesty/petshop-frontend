@@ -50,7 +50,8 @@ export const ADMIN_API = {
     LIST: '/api/admin/stores',
     CREATE: '/api/admin/stores',
     UPDATE: '/api/admin/stores',
-    DELETE: '/api/admin/stores'
+    DELETE: '/api/admin/stores',
+    DETAIL: '/api/admin/stores'
   },
   // 商品管理
   PRODUCTS: {

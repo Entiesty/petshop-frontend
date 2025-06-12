@@ -384,19 +384,50 @@ const getStoreProducts = (storeId: number) => {
 }
 
 // 商店操作
-const editStore = (store: Store) => {
+const editStore = async (store: Store) => {
   editingStore.value = store
-  console.log('编辑商店数据:', store) // 断点5：查看编辑的商店数据
-  Object.assign(storeForm, {
-    name: store.name,
-    addressText: store.addressText,
-    logoUrl: store.logoUrl || '',
-    contactPhone: store.contactPhone || '',
-    longitude: store.longitude || 0, // 从store对象中获取经度
-    latitude: store.latitude || 0    // 从store对象中获取纬度
-  })
-  console.log('表单数据设置完成:', storeForm) // 断点6：表单数据设置完成
-  showEditStoreModal.value = true
+  console.log('编辑商店数据:', store)
+  
+  try {
+    // 调用详情接口获取完整的商店信息，包括经度纬度
+    const response = await fetch(`${ADMIN_API.STORES.DETAIL}/${store.id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error('获取商店详情失败')
+    }
+    
+    const storeDetail = await response.json()
+    console.log('商店详情数据:', storeDetail)
+    
+    // 使用详情数据填充表单
+    Object.assign(storeForm, {
+      name: storeDetail.name,
+      addressText: storeDetail.addressText,
+      logoUrl: storeDetail.logoUrl || '',
+      contactPhone: storeDetail.contactPhone || '',
+      longitude: storeDetail.longitude || 0,
+      latitude: storeDetail.latitude || 0
+    })
+    
+    console.log('表单数据设置完成:', storeForm)
+    showEditStoreModal.value = true
+  } catch (error) {
+    console.error('获取商店详情失败:', error)
+    // 如果详情接口失败，使用列表数据作为后备
+    Object.assign(storeForm, {
+      name: store.name,
+      addressText: store.addressText,
+      logoUrl: store.logoUrl || '',
+      contactPhone: store.contactPhone || '',
+      longitude: store.longitude || 0,
+      latitude: store.latitude || 0
+    })
+    showEditStoreModal.value = true
+  }
 }
 
 const deleteStore = async (storeId: number) => {

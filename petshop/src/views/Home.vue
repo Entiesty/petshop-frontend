@@ -166,6 +166,13 @@ interface StoreData {
   latitude: number;
 }
 
+interface CategoryData {
+  id: number;
+  name: string;
+  iconUrl: string;
+  sortOrder?: number;
+}
+
 const router = useRouter()
 const searchKeyword = ref('')
 const mapDialogVisible = ref(false)
@@ -200,15 +207,39 @@ const goToProfile = () => {
 }
 
 // 宠物分类
-const petCategories = ref([
-  { id: 1, name: '猫咪', iconUrl: '@/assets/homelogo.png' },
-  { id: 2, name: '狗狗', iconUrl: '@/assets/homelogo.png' },
-  { id: 3, name: '兔子', iconUrl: '@/assets/homelogo.png' },
-  { id: 4, name: '鸟类', iconUrl: '@/assets/homelogo.png' },
-  { id: 5, name: '水族', iconUrl: '@/assets/homelogo.png' },
-  { id: 6, name: '仓鼠', iconUrl: '@/assets/homelogo.png' },
-  { id: 7, name: '爬虫', iconUrl: '@/assets/homelogo.png' }
-])
+const petCategories = ref<CategoryData[]>([])
+
+// 获取商品分类
+const fetchCategories = async () => {
+  try {
+    const response = await axios.get('/api/user/categories')
+    
+    if (response.data && Array.isArray(response.data)) {
+      // 转换响应数据格式，只获取一级分类（parentId为null或0的分类）
+      petCategories.value = response.data
+        .filter((category: any) => !category.parentId || category.parentId === 0)
+        .map((category: any) => ({
+          id: category.id,
+          name: category.name,
+          iconUrl: category.iconUrl || '@/assets/homelogo.png',
+          sortOrder: category.sortOrder
+        }))
+        .sort((a: CategoryData, b: CategoryData) => (a.sortOrder || 0) - (b.sortOrder || 0)) // 按排序字段排序
+    }
+  } catch (error) {
+    console.error('获取分类数据失败:', error)
+    // 使用默认分类数据作为后备
+    petCategories.value = [
+      { id: 1, name: '猫咪', iconUrl: '@/assets/homelogo.png' },
+      { id: 2, name: '狗狗', iconUrl: '@/assets/homelogo.png' },
+      { id: 3, name: '兔子', iconUrl: '@/assets/homelogo.png' },
+      { id: 4, name: '鸟类', iconUrl: '@/assets/homelogo.png' },
+      { id: 5, name: '水族', iconUrl: '@/assets/homelogo.png' },
+      { id: 6, name: '仓鼠', iconUrl: '@/assets/homelogo.png' },
+      { id: 7, name: '爬虫', iconUrl: '@/assets/homelogo.png' }
+    ]
+  }
+}
 
 // 热门宠物
 const hotPets = ref([
@@ -313,10 +344,7 @@ const searchProducts = () => {
 
 // 按分类过滤
 const filterByCategory = (categoryId: number) => {
-  router.push({
-    path: '/category',
-    query: { id: categoryId }
-  })
+  router.push(`/category/${categoryId}`)
 }
 
 // 查看商品详情
@@ -621,6 +649,9 @@ onMounted(() => {
   // 获取商品数据
   fetchFeaturedProducts()
   
+  // 获取分类数据
+  fetchCategories()
+  
   // 加载高德地图API
   if (!window.AMap) {
     const script = document.createElement('script')
@@ -628,12 +659,9 @@ onMounted(() => {
     script.async = true
     document.head.appendChild(script)
   }
-});
-window.createAiChat({
-       appId:"1931906988632010754",
-       // 支持top-left左上, top-right右上, bottom-left左下, bottom-right右下
-       iconPosition:"bottom-right"
-    })
+  
+
+})
 </script>
 
 <style scoped>
