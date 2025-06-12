@@ -87,15 +87,21 @@
       <div class="content-section">
         <div class="section-title">附近店铺</div>
         <!-- 调试信息 -->
-        <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; font-size: 12px;">
+        <!-- <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; font-size: 12px;">
           <strong>调试信息:</strong><br>
           用户位置: {{ userLocation.lng }}, {{ userLocation.lat }}<br>
           店铺数量: {{ nearbyStores.length }}<br>
+          <button @click="testBeijingLocation" style="margin: 5px; padding: 5px 10px; font-size: 12px;">
+            测试北京坐标
+          </button>
+          <button @click="fetchNearbyStores" style="margin: 5px; padding: 5px 10px; font-size: 12px;">
+            重新获取
+          </button>
           <details>
             <summary>原始数据</summary>
             <pre>{{ JSON.stringify(nearbyStores, null, 2) }}</pre>
           </details>
-        </div>
+        </div> -->
         <div class="nearby-stores">
           <div v-if="nearbyStores.length === 0" style="text-align: center; padding: 20px; color: #666;">
             暂无附近店铺数据，请检查控制台输出或联系管理员
@@ -429,11 +435,13 @@ const getUserLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         console.log('获取位置成功:', position.coords)
+        console.log('用户真实坐标 - 经度:', position.coords.longitude, '纬度:', position.coords.latitude)
         userLocation.value = {
           lng: position.coords.longitude,
           lat: position.coords.latitude
         }
         console.log('更新用户位置为:', userLocation.value)
+        console.log('用户位置详细信息 - 经度:', userLocation.value.lng, '纬度:', userLocation.value.lat)
         fetchNearbyStores()
       },
       (error) => {
@@ -457,13 +465,21 @@ const getUserLocation = () => {
 // 从API获取附近店铺
 const fetchNearbyStores = async () => {
   try {
+    console.log('正在获取附近店铺，用户位置:', userLocation.value)
+    
     const response = await axios.get('/api/user/stores/nearby', {
       params: {
         lng: userLocation.value.lng,
         lat: userLocation.value.lat,
-        distance: 10 // 10公里范围内
+        distance: 50 // 临时扩大到50公里进行测试
       }
     })
+    
+    console.log('附近店铺API响应status:', response.status)
+    console.log('附近店铺API响应data:', response.data)
+    console.log('响应数据类型:', typeof response.data)
+    console.log('是否为数组:', Array.isArray(response.data))
+    console.log('数组长度:', response.data ? response.data.length : '数据为空')
     
     if (response.data && Array.isArray(response.data)) {
       // 转换响应数据格式
@@ -482,43 +498,66 @@ const fetchNearbyStores = async () => {
       })
       
       console.log('转换后的店铺数据:', nearbyStores.value)
+      
+      if (nearbyStores.value.length === 0) {
+        console.log('API返回空数据，使用默认数据')
+        useDefaultStores()
+      }
+    } else {
+      console.log('API响应格式不正确，使用默认数据')
+      useDefaultStores()
     }
   } catch (error) {
     console.error('获取附近店铺失败:', error)
-    // 使用默认数据作为后备
-    nearbyStores.value = [
-      {
-        id: 1,
-        name: '爱宠之家旗舰店',
-        address: '朝阳区建国路98号',
-        distance: 1.2,
-        businessHours: '09:00-21:00',
-        imageUrl: '@/assets/homelogo.png',
-        longitude: 116.4133,
-        latitude: 39.9110
-      },
-      {
-        id: 2,
-        name: '萌宠乐园分店',
-        address: '海淀区中关村大街115号',
-        distance: 2.5,
-        businessHours: '10:00-20:00',
-        imageUrl: '@/assets/homelogo.png',
-        longitude: 116.3380,
-        latitude: 39.9860
-      },
-      {
-        id: 3,
-        name: '宠物天地',
-        address: '西城区西单北大街131号',
-        distance: 3.1,
-        businessHours: '09:30-20:30',
-        imageUrl: '@/assets/homelogo.png',
-        longitude: 116.3770,
-        latitude: 39.9088
-      }
-    ]
+    useDefaultStores()
   }
+}
+
+// 测试北京坐标
+const testBeijingLocation = () => {
+  console.log('=== 开始测试北京坐标 ===')
+  userLocation.value = {
+    lng: 116.404, // 天安门坐标
+    lat: 39.915
+  }
+  console.log('设置测试位置为北京天安门:', userLocation.value)
+  fetchNearbyStores()
+}
+
+// 使用默认店铺数据
+const useDefaultStores = () => {
+  nearbyStores.value = [
+    {
+      id: 1,
+      name: '爱宠之家旗舰店',
+      address: '朝阳区建国路98号',
+      distance: 1.2,
+      businessHours: '09:00-21:00',
+      imageUrl: '@/assets/homelogo.png',
+      longitude: 116.4133,
+      latitude: 39.9110
+    },
+    {
+      id: 2,
+      name: '萌宠乐园分店',
+      address: '海淀区中关村大街115号',
+      distance: 2.5,
+      businessHours: '10:00-20:00',
+      imageUrl: '@/assets/homelogo.png',
+      longitude: 116.3380,
+      latitude: 39.9860
+    },
+    {
+      id: 3,
+      name: '宠物天地',
+      address: '西城区西单北大街131号',
+      distance: 3.1,
+      businessHours: '09:30-20:30',
+      imageUrl: '@/assets/homelogo.png',
+      longitude: 116.3770,
+      latitude: 39.9088
+    }
+  ]
 }
 
 // 获取热门宠物和促销商品
