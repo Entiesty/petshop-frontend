@@ -159,6 +159,18 @@
             <input v-model.number="productForm.price" type="number" step="0.01" required>
           </div>
           <div class="form-group">
+            <label>折扣</label>
+            <input 
+              v-model.number="productForm.discount" 
+              type="number" 
+              step="0.01" 
+              min="0.1" 
+              max="1.0" 
+              placeholder="0.8表示八折，1.0表示无折扣"
+            >
+            <small class="form-hint">范围：0.1-1.0，1.0表示无折扣，0.8表示八折</small>
+          </div>
+          <div class="form-group">
             <label>库存 *</label>
             <input v-model.number="productForm.stock" type="number" required>
           </div>
@@ -300,6 +312,7 @@ interface Product {
   description?: string
   healthInfo?: string
   price: number
+  discount?: number  // 添加折扣字段
   stock: number
   mainImageUrl?: string
   videoUrl?: string
@@ -342,6 +355,7 @@ const productForm = reactive({
   description: '',
   healthInfo: '',
   price: 0,
+  discount: 1.0,  // 添加折扣字段，默认为1.0（无折扣）
   stock: 0,
   mainImageUrl: '',
   videoUrl: ''
@@ -557,6 +571,7 @@ const closeProductModal = () => {
     description: '',
     healthInfo: '',
     price: 0,
+    discount: 1.0,  // 重置折扣为1.0
     stock: 0,
     mainImageUrl: '',
     videoUrl: ''

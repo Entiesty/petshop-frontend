@@ -64,12 +64,15 @@
       </div>
 
       <!-- 限时促销 -->
-      <div class="content-section">
+      <div class="content-section" v-if="promotions.length > 0">
         <div class="section-title">限时促销</div>
         <div class="promotions">
           <div class="promotion-card" v-for="promotion in promotions" :key="promotion.id" @click="viewProductDetail(promotion.id)">
             <div class="promotion-image">
               <img :src="promotion.imageUrl" :alt="promotion.name">
+              <div class="discount-badge" v-if="promotion.discount">
+                {{ Math.round((1 - promotion.discount) * 100) }}% OFF
+              </div>
             </div>
             <div class="promotion-info">
               <div class="promotion-name">{{ promotion.name }}</div>
@@ -179,7 +182,7 @@
         </p>
       </div>
       
-      <div class="location-grid">
+          <div class="location-grid">
         <div 
           v-for="location in presetLocations" 
           :key="location.name"
@@ -297,105 +300,19 @@ const fetchCategories = async () => {
     }
   } catch (error) {
     console.error('获取分类数据失败:', error)
-    // 使用默认分类数据作为后备
-    petCategories.value = [
-  { id: 1, name: '猫咪', iconUrl: '@/assets/homelogo.png' },
-  { id: 2, name: '狗狗', iconUrl: '@/assets/homelogo.png' },
-  { id: 3, name: '兔子', iconUrl: '@/assets/homelogo.png' },
-  { id: 4, name: '鸟类', iconUrl: '@/assets/homelogo.png' },
-  { id: 5, name: '水族', iconUrl: '@/assets/homelogo.png' },
-  { id: 6, name: '仓鼠', iconUrl: '@/assets/homelogo.png' },
-  { id: 7, name: '爬虫', iconUrl: '@/assets/homelogo.png' }
-    ]
+    // 错误时设置为空数组，不使用默认数据
+    petCategories.value = []
   }
 }
 
 // 热门宠物
-const hotPets = ref([
-  { 
-    id: 1, 
-    name: '布偶猫', 
-    description: '温顺亲人，适合家庭饲养', 
-    price: 3800, 
-    imageUrl: '@/assets/homelogo.png'
-  },
-  { 
-    id: 2, 
-    name: '金毛犬', 
-    description: '聪明友善，适合陪伴儿童', 
-    price: 2500, 
-    imageUrl: '@/assets/homelogo.png'
-  },
-  { 
-    id: 3, 
-    name: '垂耳兔', 
-    description: '性格温顺，毛色纯正', 
-    price: 680, 
-    imageUrl: '@/assets/homelogo.png'
-  }
-])
+const hotPets = ref([])
 
 // 促销商品
-const promotions = ref([
-  {
-    id: 101,
-    name: '宠物食品特惠',
-    description: '进口高品质猫粮',
-    currentPrice: 128,
-    originalPrice: 168,
-    imageUrl: '@/assets/homelogo.png'
-  },
-  {
-    id: 102,
-    name: '宠物用品套装',
-    description: '全套宠物玩具5件套',
-    currentPrice: 299,
-    originalPrice: 399,
-    imageUrl: '@/assets/homelogo.png'
-  },
-  {
-    id: 103,
-    name: '宠物美容套装',
-    description: '专业宠物梳+剪刀套',
-    currentPrice: 159,
-    originalPrice: 209,
-    imageUrl: '@/assets/homelogo.png'
-  }
-])
+const promotions = ref([])
 
 // 附近店铺
-const nearbyStores = ref([
-  {
-    id: 1,
-    name: '爱宠之家旗舰店',
-    address: '朝阳区建国路98号',
-    distance: 1.2,
-    businessHours: '09:00-21:00',
-    imageUrl: '@/assets/homelogo.png',
-    longitude: 116.4133,
-    latitude: 39.9110
-  },
-  {
-    id: 2,
-    name: '萌宠乐园分店',
-    address: '海淀区中关村大街115号',
-    distance: 2.5,
-    businessHours: '10:00-20:00',
-    imageUrl: '@/assets/homelogo.png',
-    longitude: 116.3380,
-    latitude: 39.9860
-  },
-  {
-    id: 3,
-    name: '宠物天地',
-    address: '西城区西单北大街131号',
-    distance: 3.1,
-    businessHours: '09:30-20:30',
-    imageUrl: '@/assets/homelogo.png',
-    longitude: 116.3770,
-    latitude: 39.9088
-  }
-])
+const nearbyStores = ref([])
 
 // 搜索商品
 const searchProducts = () => {
@@ -600,219 +517,72 @@ const fetchNearbyStores = async () => {
 
 // 使用默认店铺数据
 const useDefaultStores = () => {
-  // 根据用户位置提供不同地区的默认数据
-  const isInXiamenRegion = userLocation.value.lng >= 117.8 && userLocation.value.lng <= 118.3 && 
-                          userLocation.value.lat >= 24.2 && userLocation.value.lat <= 24.7
-  const isInShanghaiRegion = userLocation.value.lng >= 120 && userLocation.value.lng <= 122 && 
-                            userLocation.value.lat >= 29 && userLocation.value.lat <= 32
-  
-  if (isInXiamenRegion) {
-    nearbyStores.value = [
-      {
-        id: 202,
-        name: '上海宠物之家',
-        address: '徐汇区淮海中路999号',
-        distance: 3.5,
-        businessHours: '10:00-20:00',
-        imageUrl: '@/assets/homelogo.png',
-        longitude: 121.449,
-        latitude: 31.213
-      },
-      {
-        id: 203,
-        name: '浦东宠物天地',
-        address: '浦东新区世纪大道1388号',
-        distance: 4.8,
-        businessHours: '09:30-21:30',
-        imageUrl: '@/assets/homelogo.png',
-        longitude: 121.525,
-        latitude: 31.226
-      }
-    ]
-  } else {
-    // 北京地区的默认店铺数据
-  nearbyStores.value = [
-    {
-      id: 1,
-      name: '爱宠之家旗舰店',
-      address: '朝阳区建国路98号',
-      distance: 1.2,
-      businessHours: '09:00-21:00',
-      imageUrl: '@/assets/homelogo.png',
-      longitude: 116.4133,
-      latitude: 39.9110
-    },
-    {
-      id: 2,
-      name: '萌宠乐园分店',
-      address: '海淀区中关村大街115号',
-      distance: 2.5,
-      businessHours: '10:00-20:00',
-      imageUrl: '@/assets/homelogo.png',
-      longitude: 116.3380,
-      latitude: 39.9860
-    },
-    {
-      id: 3,
-      name: '宠物天地',
-      address: '西城区西单北大街131号',
-      distance: 3.1,
-      businessHours: '09:30-20:30',
-      imageUrl: '@/assets/homelogo.png',
-      longitude: 116.3770,
-      latitude: 39.9088
-    }
-  ]
-  }
+  // 不再使用硬编码的默认数据，只显示空状态
+  console.log('没有找到附近店铺，显示空状态')
+  nearbyStores.value = []
 }
 
 // 获取热门宠物和促销商品
 const fetchFeaturedProducts = async () => {
   try {
-    // 热门宠物 API - 这里应该改为获取宠物类商品的接口
-    const hotPetsResponse = await axios.get('/api/user/products', {
+    // 随机获取商品 - 不按类型筛选，直接获取随机商品
+    const productsResponse = await axios.get('/api/user/products', {
       params: { 
-        productType: 1, // 1-宠物类型
         current: 1,
-        size: 3
+        size: 6  // 获取6个商品，用于两行三列展示
       }
     })
     
-    if (hotPetsResponse.data && hotPetsResponse.data.records) {
-      hotPets.value = hotPetsResponse.data.records.map((pet: any) => ({
-        id: pet.id,
-        name: pet.name,
-        description: pet.description,
-        price: pet.price,
-        imageUrl: pet.mainImageUrl || '@/assets/homelogo.png'
-      }))
+    if (productsResponse.data && productsResponse.data.records) {
+      // 随机排序商品并映射为前端需要的格式
+      const products = productsResponse.data.records
+        .sort(() => Math.random() - 0.5)  // 随机排序
+        .map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          description: product.description || '优质商品',
+          price: product.price,
+          imageUrl: product.mainImageUrl || '@/assets/homelogo.png'
+        }));
+      
+      hotPets.value = products;
     } else {
-      // 使用默认数据
-      hotPets.value = [
-        { 
-          id: 1, 
-          name: '布偶猫', 
-          description: '温顺亲人，适合家庭饲养', 
-          price: 3800, 
-          imageUrl: '@/assets/homelogo.png'
-        },
-        { 
-          id: 2, 
-          name: '金毛犬', 
-          description: '聪明友善，适合陪伴儿童', 
-          price: 2500, 
-          imageUrl: '@/assets/homelogo.png'
-        },
-        { 
-          id: 3, 
-          name: '垂耳兔', 
-          description: '性格温顺，毛色纯正', 
-          price: 680, 
-          imageUrl: '@/assets/homelogo.png'
-        }
-      ]
+      // API调用失败时设置为空数组
+      hotPets.value = [];
     }
     
-    // 促销商品 API - 这里可以获取周边类商品
+    // 促销商品 API - 获取有折扣的商品
     const promotionsResponse = await axios.get('/api/user/products', {
       params: { 
-        productType: 2, // 2-周边类型
         current: 1,
-        size: 3
+        size: 6
       }
     })
     
     if (promotionsResponse.data && promotionsResponse.data.records) {
-      promotions.value = promotionsResponse.data.records.map((promo: any) => ({
-        id: promo.id,
-        name: promo.name,
-        description: promo.description,
-        currentPrice: Number((promo.price * 0.8).toFixed(2)), // 模拟打折价格，修复精度问题
-        originalPrice: promo.price,
-        imageUrl: promo.mainImageUrl || '@/assets/homelogo.png'
-      }))
+      // 筛选出有折扣的商品（discount < 1.0）
+      const discountedProducts = promotionsResponse.data.records
+        .filter((product: any) => product.discount && product.discount < 1.0)
+        .map((promo: any) => ({
+          id: promo.id,
+          name: promo.name,
+          description: promo.description || '限时优惠',
+          currentPrice: Number((promo.price * promo.discount).toFixed(2)), // 计算折扣后价格
+          originalPrice: promo.price,
+          imageUrl: promo.mainImageUrl || '@/assets/homelogo.png',
+          discount: promo.discount
+        }));
+      
+      promotions.value = discountedProducts;
     } else {
-      // 使用默认数据
-      promotions.value = [
-        {
-          id: 101,
-          name: '宠物食品特惠',
-          description: '进口高品质猫粮',
-          currentPrice: 128,
-          originalPrice: 168,
-          imageUrl: '@/assets/homelogo.png'
-        },
-        {
-          id: 102,
-          name: '宠物用品套装',
-          description: '全套宠物玩具5件套',
-          currentPrice: 299,
-          originalPrice: 399,
-          imageUrl: '@/assets/homelogo.png'
-        },
-        {
-          id: 103,
-          name: '宠物美容套装',
-          description: '专业宠物梳+剪刀套',
-          currentPrice: 159,
-          originalPrice: 209,
-          imageUrl: '@/assets/homelogo.png'
-        }
-      ]
+      // 如果API调用失败，设置为空数组
+      promotions.value = [];
     }
   } catch (error) {
     console.error('获取商品数据失败:', error)
-    // 使用默认数据作为后备
-    hotPets.value = [
-      { 
-        id: 1, 
-        name: '布偶猫', 
-        description: '温顺亲人，适合家庭饲养', 
-        price: 3800, 
-        imageUrl: '@/assets/homelogo.png'
-      },
-      { 
-        id: 2, 
-        name: '金毛犬', 
-        description: '聪明友善，适合陪伴儿童', 
-        price: 2500, 
-        imageUrl: '@/assets/homelogo.png'
-      },
-      { 
-        id: 3, 
-        name: '垂耳兔', 
-        description: '性格温顺，毛色纯正', 
-        price: 680, 
-        imageUrl: '@/assets/homelogo.png'
-      }
-    ]
-    
-    promotions.value = [
-      {
-        id: 101,
-        name: '宠物食品特惠',
-        description: '进口高品质猫粮',
-        currentPrice: 128,
-        originalPrice: 168,
-        imageUrl: '@/assets/homelogo.png'
-      },
-      {
-        id: 102,
-        name: '宠物用品套装',
-        description: '全套宠物玩具5件套',
-        currentPrice: 299,
-        originalPrice: 399,
-        imageUrl: '@/assets/homelogo.png'
-      },
-      {
-        id: 103,
-        name: '宠物美容套装',
-        description: '专业宠物梳+剪刀套',
-        currentPrice: 159,
-        originalPrice: 209,
-        imageUrl: '@/assets/homelogo.png'
-      }
-    ]
+    // 错误时设置为空数组
+    hotPets.value = [];
+    promotions.value = [];
   }
 }
 
@@ -1124,12 +894,25 @@ onMounted(() => {
   height: 120px;
   min-width: 120px;
   overflow: hidden;
+  position: relative;
 }
 
 .promotion-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.discount-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #ff4d4f;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .promotion-info {
