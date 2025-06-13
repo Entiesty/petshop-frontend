@@ -32,30 +32,10 @@
             <i class="el-icon"><Location /></i>
             查看地图
           </el-button>
-          <el-button type="primary" @click="showRoute">
+          <el-button type="primary" @click="navigateToStore">
             <i class="el-icon"><Position /></i>
             导航路线
           </el-button>
-          <el-button type="success" @click="callStore" v-if="store.contactPhone">
-            <i class="el-icon"><Phone /></i>
-            拨打电话
-          </el-button>
-          <el-dropdown @command="handleNavigation">
-            <el-button type="info">
-              更多导航
-              <i class="el-icon el-icon--right">
-                <ArrowDown />
-              </i>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="amap">高德地图导航</el-dropdown-item>
-                <el-dropdown-item command="baidu">百度地图导航</el-dropdown-item>
-                <el-dropdown-item command="tencent">腾讯地图导航</el-dropdown-item>
-                <el-dropdown-item command="copy">复制坐标</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
         </div>
         
         <div class="store-info-section">
@@ -144,7 +124,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { Location, Phone, Position, ArrowDown } from '@element-plus/icons-vue'
+import { Location, Phone, Position } from '@element-plus/icons-vue'
 
 // 扩展Window接口以包含AMap
 declare global {
@@ -258,20 +238,47 @@ const showMap = () => {
   }, 300)
 }
 
-// 显示路线
-const showRoute = () => {
-  mapDialogVisible.value = true
-  showDirections.value = true
+// 导航到店铺
+const navigateToStore = () => {
+  const { name, latitude, longitude } = store.value;
   
-  // 在对话框显示后渲染地图
-  setTimeout(() => {
-    if (window.AMap && mapContainer.value) {
-      renderMap()
-    } else {
-      ElMessage.warning('地图服务暂不可用')
-    }
-  }, 300)
-}
+  if (!latitude || !longitude || !name) {
+    ElMessage.warning('店铺位置信息不完整');
+    return;
+  }
+
+  // 判断是否是移动设备
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // 移动端：尝试唤起高德地图App
+    const appSchemeUrl = `iosamap://navi?sourceApplication=PetShop&poiname=${encodeURIComponent(name)}&lat=${latitude}&lon=${longitude}&dev=1&style=2`;
+    window.location.href = appSchemeUrl;
+
+    // Fallback 逻辑：如果App没唤起，几秒后跳转到网页版
+    const timeout = setTimeout(() => {
+      if (confirm('检测到您未安装高德地图App或唤起失败，是否跳转到高德地图网页版进行导航？')) {
+        const webNavUrl = `https://uri.amap.com/navigation?from=&to=${longitude},${latitude},${encodeURIComponent(name)}&mode=car&policy=1&src=PetShop&coordinate=gaode`;
+        window.open(webNavUrl, '_blank');
+      }
+    }, 800);
+
+    // 监听页面可见性变化来清除计时器
+    const visibilitychangeHandler = () => {
+      if (document.hidden || (document as any).webkitHidden) {
+        clearTimeout(timeout);
+        document.removeEventListener('visibilitychange', visibilitychangeHandler);
+        document.removeEventListener('webkitvisibilitychange', visibilitychangeHandler);
+      }
+    };
+    document.addEventListener('visibilitychange', visibilitychangeHandler);
+    document.addEventListener('webkitvisibilitychange', visibilitychangeHandler);
+  } else {
+    // 桌面端：直接跳转到高德地图网页版
+    const webNavUrl = `https://uri.amap.com/navigation?from=&to=${longitude},${latitude},${encodeURIComponent(name)}&mode=car&policy=1&src=PetShop&coordinate=gaode`;
+    window.open(webNavUrl, '_blank');
+  }
+};
 
 // 渲染地图
 const renderMap = () => {
@@ -331,53 +338,6 @@ const getUserLocation = () => {
   }
 }
 
-// 拨打电话
-const callStore = () => {
-  if (!store.value.contactPhone) {
-    ElMessage.warning('店铺电话信息不完整')
-    return
-  }
-  
-  // 直接拨打电话
-  window.location.href = `tel:${store.value.contactPhone}`
-}
-
-// 处理导航选择
-const handleNavigation = (command: string) => {
-  const { latitude, longitude } = store.value
-  
-  if (!latitude || !longitude) {
-    ElMessage.warning('店铺位置信息不完整')
-    return
-  }
-  
-  switch (command) {
-    case 'amap':
-      // 高德地图导航
-      window.open(`https://uri.amap.com/navigation?to=${longitude},${latitude}&mode=car&coordinate=gaode`)
-      break
-    case 'baidu':
-      // 百度地图导航
-      window.open(`https://api.map.baidu.com/direction?destination=${latitude},${longitude}&mode=driving&coord_type=gcj02`)
-      break
-    case 'tencent':
-      // 腾讯地图导航
-      window.open(`https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${store.value.name}&tocoord=${latitude},${longitude}`)
-      break
-    case 'copy':
-      // 复制坐标
-      const coordText = `${latitude},${longitude}`
-      navigator.clipboard.writeText(coordText).then(() => {
-        ElMessage.success('坐标已复制到剪贴板')
-      }).catch(() => {
-        ElMessage.error('复制失败，请手动复制')
-      })
-      break
-    default:
-      break
-  }
-}
-
 // 获取店铺详情
 const fetchStoreDetail = async () => {
   try {
@@ -396,8 +356,6 @@ const fetchStoreDetail = async () => {
     loading.value = false
   }
 }
-
-
 
 onMounted(() => {
   fetchStoreDetail()
@@ -494,10 +452,6 @@ onMounted(() => {
 }
 
 .store-actions .el-button {
-  min-width: 120px;
-}
-
-.store-actions .el-dropdown {
   min-width: 120px;
 }
 
@@ -676,8 +630,7 @@ onMounted(() => {
     align-items: stretch;
   }
   
-  .store-actions .el-button,
-  .store-actions .el-dropdown {
+  .store-actions .el-button {
     width: 100%;
     min-width: auto;
   }
