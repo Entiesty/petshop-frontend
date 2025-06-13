@@ -47,6 +47,9 @@
             <div class="item-details">
               <h3 class="item-name">{{ item.name }}</h3>
               <p class="item-description">{{ item.description }}</p>
+              <div class="item-category" v-if="item.categoryPath">
+                <span class="category-path">{{ item.categoryPath }}</span>
+              </div>
               <div class="item-specs">
                 <span class="spec-item">规格: {{ item.specification }}</span>
                 <span class="spec-item">品牌: {{ item.brand }}</span>
@@ -140,9 +143,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
 
 // 接口定义
 interface CartItem {
@@ -155,6 +159,9 @@ interface CartItem {
   imageUrl: string;
   specification: string;
   brand: string;
+  categoryId?: number;
+  categoryName?: string;
+  categoryPath?: string;
 }
 
 // 响应式数据
@@ -162,26 +169,74 @@ const router = useRouter()
 const cartItems = ref<CartItem[]>([
   {
     id: 1,
-    name: '布偶猫',
-    description: '温顺亲人，适合家庭饲养的可爱布偶猫',
-    price: 3800,
-    originalPrice: 4200,
+    name: '阳光-金毛寻回犬',
+    description: '温顺亲人，适合家庭饲养的可爱金毛幼犬',
+    price: 6800,
+    originalPrice: 7200,
     quantity: 1,
     imageUrl: '/src/assets/homelogo.png',
-    specification: '3个月大',
-    brand: '优质猫舍'
+    specification: '8个月大',
+    brand: '汪汪之家',
+    categoryId: 101,
+    categoryName: '狗狗专区',
+    categoryPath: '活体宠物 > 狗狗专区'
   },
   {
     id: 2,
-    name: '高级猫粮',
-    description: '进口优质猫粮，营养丰富',
-    price: 128,
-    quantity: 2,
+    name: '皇家大型犬幼犬粮 15kg',
+    description: '专为大型犬幼犬设计的营养犬粮',
+    price: 589,
+    quantity: 1,
     imageUrl: '/src/assets/homelogo.png',
-    specification: '5kg装',
-    brand: '皇家'
+    specification: '15kg装',
+    brand: '皇家',
+    categoryId: 201,
+    categoryName: '犬粮',
+    categoryPath: '宠物主粮 > 犬粮'
   }
 ])
+
+// 分类信息缓存
+const categoriesCache = ref<Map<number, any>>(new Map())
+
+// 获取分类信息
+const fetchCategoryInfo = async (categoryId: number) => {
+  if (categoriesCache.value.has(categoryId)) {
+    return categoriesCache.value.get(categoryId)
+  }
+  
+  try {
+    const response = await axios.get(`/api/user/categories/${categoryId}`)
+    const category = response.data
+    categoriesCache.value.set(categoryId, category)
+    return category
+  } catch (error) {
+    console.error('获取分类信息失败:', error)
+    return null
+  }
+}
+
+// 构建分类路径
+const buildCategoryPath = async (categoryId: number): Promise<string> => {
+  const category = await fetchCategoryInfo(categoryId)
+  if (!category) return ''
+  
+  if (category.parentId && category.parentId !== 0) {
+    const parentPath = await buildCategoryPath(category.parentId)
+    return parentPath ? `${parentPath} > ${category.name}` : category.name
+  }
+  
+  return category.name
+}
+
+// 初始化购物车商品的分类信息
+const initializeCategoryInfo = async () => {
+  for (const item of cartItems.value) {
+    if (item.categoryId && !item.categoryPath) {
+      item.categoryPath = await buildCategoryPath(item.categoryId)
+    }
+  }
+}
 
 // 计算属性
 const subtotal = computed(() => {
@@ -265,8 +320,27 @@ const continueShopping = () => {
 const proceedToCheckout = () => {
   router.push('/checkout')
 }
+
+// 组件挂载时初始化分类信息
+onMounted(() => {
+  initializeCategoryInfo()
+})
 </script>
 
 <style lang="scss">
 @import '../styles/cart-macos.scss';
+
+// 分类信息样式
+.item-category {
+  margin: 4px 0 8px 0;
+  
+  .category-path {
+    font-size: 12px;
+    color: #1890ff;
+    background: #e6f7ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+}
 </style> 

@@ -158,12 +158,7 @@ interface Product {
 const router = useRouter()
 const route = useRoute()
 
-// 分类配置常量 - 根据实际数据库中的分类ID调整
-const CATEGORY_CONFIG = {
-  LIVE_PETS: 1,    // 活体宠物分类ID
-  PET_SUPPLIES: 2  // 宠物用品分类ID
-}
-
+// 响应式数据
 const loading = ref(false)
 const currentCategory = ref<Category | null>(null)
 const subCategories = ref<Category[]>([])
@@ -178,6 +173,9 @@ const pageSize = ref(12)
 const totalProducts = ref(0)
 const totalPages = computed(() => Math.ceil(totalProducts.value / pageSize.value))
 
+// 所有子分类及其商品的缓存
+const categoryProductsCache = ref<Map<number, Product[]>>(new Map())
+
 // 筛选后的商品
 const filteredProducts = computed(() => {
   let result = products.value
@@ -186,7 +184,6 @@ const filteredProducts = computed(() => {
   if (selectedSubCategory.value) {
     result = result.filter(product => product.categoryId === selectedSubCategory.value)
   }
-  // 如果选择"全部"，则显示所有已从API获取的商品（已按productType筛选）
 
   // 排序
   switch (sortBy.value) {
@@ -232,37 +229,57 @@ const fetchSubCategories = async (parentId: number) => {
   }
 }
 
-// 获取商品列表
-const fetchProducts = async (categoryId: number) => {
+// 获取当前分类下的所有商品（包括子分类商品）
+const fetchAllCategoryProducts = async (categoryId: number) => {
   loading.value = true
   try {
-    // 判断分类类型
-    const isLivePetCategory = categoryId === CATEGORY_CONFIG.LIVE_PETS
-    const isPetSuppliesCategory = categoryId === CATEGORY_CONFIG.PET_SUPPLIES
+    // 首先获取当前分类的直接商品
+    const directProductsResponse = await axios.get('/api/user/products', {
+      params: {
+        categoryId: categoryId,
+        current: 1,
+        size: 1000
+      }
+    })
     
-    let params: any = {
-      current: 1,
-      size: 1000
+    let allProducts: Product[] = directProductsResponse.data?.records || []
+    
+    // 获取子分类
+    await fetchSubCategories(categoryId)
+    
+    // 如果有子分类，获取每个子分类的商品
+    if (subCategories.value.length > 0) {
+      const subCategoryPromises = subCategories.value.map(async (subCategory) => {
+        try {
+          const subProductsResponse = await axios.get('/api/user/products', {
+            params: {
+              categoryId: subCategory.id,
+              current: 1,
+              size: 1000
+            }
+          })
+          const subProducts = subProductsResponse.data?.records || []
+          
+          // 缓存子分类商品
+          categoryProductsCache.value.set(subCategory.id, subProducts)
+          
+          return subProducts
+        } catch (error) {
+          console.error(`获取子分类 ${subCategory.name} 商品失败:`, error)
+          return []
+        }
+      })
+      
+      const subCategoryProducts = await Promise.all(subCategoryPromises)
+      
+      // 合并所有子分类的商品
+      subCategoryProducts.forEach(products => {
+        allProducts = allProducts.concat(products)
+      })
     }
     
-    if (isLivePetCategory) {
-      // 活体宠物：获取所有活体宠物商品
-      params.productType = 1
-    } else if (isPetSuppliesCategory) {
-      // 宠物用品：获取所有宠物用品商品
-      params.productType = 2
-    } else {
-      // 其他分类：正常获取该分类商品
-      params.categoryId = categoryId
-    }
+    products.value = allProducts
     
-    const response = await axios.get('/api/user/products', { params })
-    
-    if (response.data && response.data.records) {
-      products.value = response.data.records
-    } else {
-      products.value = []
-    }
   } catch (error) {
     console.error('获取商品列表失败:', error)
     ElMessage.error('获取商品列表失败')
@@ -276,6 +293,18 @@ const fetchProducts = async (categoryId: number) => {
 const filterBySubCategory = (subCategoryId: number | null) => {
   selectedSubCategory.value = subCategoryId
   currentPage.value = 1 // 重置页码
+  
+  if (subCategoryId === null) {
+    // 显示所有商品
+    return
+  }
+  
+  // 如果选择了特定子分类，确保其商品已加载
+  if (!categoryProductsCache.value.has(subCategoryId)) {
+    // 如果缓存中没有该子分类的商品，重新加载
+    const currentCategoryId = parseInt(route.params.id as string)
+    fetchAllCategoryProducts(currentCategoryId)
+  }
 }
 
 // 排序商品
@@ -303,8 +332,7 @@ watch(() => route.params.id, async (newId) => {
   if (newId) {
     const categoryId = parseInt(newId as string)
     await fetchCategoryInfo(categoryId)
-    await fetchSubCategories(categoryId)
-    await fetchProducts(categoryId)
+    await fetchAllCategoryProducts(categoryId)
   }
 }, { immediate: true })
 
@@ -312,8 +340,7 @@ onMounted(async () => {
   const categoryId = parseInt(route.params.id as string)
   if (categoryId) {
     await fetchCategoryInfo(categoryId)
-    await fetchSubCategories(categoryId)
-    await fetchProducts(categoryId)
+    await fetchAllCategoryProducts(categoryId)
   }
 })
 </script>
