@@ -529,39 +529,15 @@ const fetchFeaturedProducts = async () => {
     const productsResponse = await axios.get('/api/user/products', {
       params: { 
         current: 1,
-        size: 6  // 获取6个商品，用于两行三列展示
+        size: 12  // 增加获取数量，确保有足够的非折扣商品可用
       }
     })
     
     if (productsResponse.data && productsResponse.data.records) {
-      // 随机排序商品并映射为前端需要的格式
-      const products = productsResponse.data.records
-        .sort(() => Math.random() - 0.5)  // 随机排序
-        .map((product: any) => ({
-          id: product.id,
-          name: product.name,
-          description: product.description || '优质商品',
-          price: product.price,
-          imageUrl: product.mainImageUrl || '@/assets/homelogo.png'
-        }));
+      const allProducts = productsResponse.data.records;
       
-      hotPets.value = products;
-    } else {
-      // API调用失败时设置为空数组
-      hotPets.value = [];
-    }
-    
-    // 促销商品 API - 获取有折扣的商品
-    const promotionsResponse = await axios.get('/api/user/products', {
-      params: { 
-        current: 1,
-        size: 6
-      }
-    })
-    
-    if (promotionsResponse.data && promotionsResponse.data.records) {
-      // 筛选出有折扣的商品（discount < 1.0）
-      const discountedProducts = promotionsResponse.data.records
+      // 先筛选出有折扣的商品（discount < 1.0）
+      const discountedProducts = allProducts
         .filter((product: any) => product.discount && product.discount < 1.0)
         .map((promo: any) => ({
           id: promo.id,
@@ -573,9 +549,30 @@ const fetchFeaturedProducts = async () => {
           discount: promo.discount
         }));
       
+      // 设置促销商品
       promotions.value = discountedProducts;
+      
+      // 筛选非折扣商品用于热门宠物展示
+      // 创建折扣商品ID集合，用于快速查找
+      const discountedIds = new Set(discountedProducts.map((item: any) => item.id));
+      
+      // 过滤掉已经在折扣区显示的商品
+      const nonDiscountedProducts = allProducts
+        .filter((product: any) => !discountedIds.has(product.id))
+        .sort(() => Math.random() - 0.5)  // 随机排序
+        .slice(0, 6)  // 只取6个商品
+        .map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          description: product.description || '优质商品',
+          price: product.price,
+          imageUrl: product.mainImageUrl || '@/assets/homelogo.png'
+        }));
+      
+      hotPets.value = nonDiscountedProducts;
     } else {
-      // 如果API调用失败，设置为空数组
+      // API调用失败时设置为空数组
+      hotPets.value = [];
       promotions.value = [];
     }
   } catch (error) {
