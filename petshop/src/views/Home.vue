@@ -30,6 +30,12 @@
         <router-link to="/cart" class="cart-icon">
           <el-icon><ShoppingCart /></el-icon>
         </router-link>
+        <router-link to="/orders" class="order-icon">
+          <el-icon><Tickets /></el-icon>
+        </router-link>
+        <router-link to="/wallet" class="wallet-icon">
+          <el-icon><Wallet /></el-icon>
+        </router-link>
       </div>
     </header>
 
@@ -207,7 +213,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus'
-import { User, ShoppingCart, HomeFilled, ChatDotRound, LocationFilled, Pointer, Refresh } from '@element-plus/icons-vue'
+import { User, ShoppingCart, HomeFilled, ChatDotRound, LocationFilled, Pointer, Refresh, Tickets, Wallet } from '@element-plus/icons-vue'
 import { TOKEN_KEY } from '../config'
 
 // 扩展Window接口以包含AMap
@@ -667,13 +673,13 @@ onMounted(() => {
   gap: 20px;
 }
 
-.user-icon, .cart-icon, .ai-icon {
+.user-icon, .cart-icon, .ai-icon, .order-icon, .wallet-icon {
   font-size: 24px;
   color: #666;
   cursor: pointer;
 }
 
-.user-icon:hover, .cart-icon:hover, .ai-icon:hover {
+.user-icon:hover, .cart-icon:hover, .ai-icon:hover, .order-icon:hover, .wallet-icon:hover {
   color: #409eff;
 }
 

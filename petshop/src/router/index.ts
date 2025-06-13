@@ -10,6 +10,8 @@ import StoreDetail from '../views/StoreDetail.vue'
 import CategoryProducts from '../views/CategoryProducts.vue'
 import SearchResults from '../views/SearchResults.vue' // 添加搜索结果页面导入
 import AIAssistant from '../views/AIAssistant.vue'
+import Orders from '../views/Orders.vue' // 添加订单页面导入
+import Wallet from '../views/Wallet.vue' // 添加钱包页面导入
 import { TOKEN_KEY } from '../config'
 
 // 后台管理组件
@@ -46,6 +48,19 @@ const router = createRouter({
       path: '/user',
       name: 'User',
       component: User,
+      meta: { requiresAuth: true }
+    },
+    // 添加订单和钱包路由
+    {
+      path: '/orders',
+      name: 'Orders',
+      component: Orders,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/wallet',
+      name: 'Wallet',
+      component: Wallet,
       meta: { requiresAuth: true }
     },
     // 后台管理路由

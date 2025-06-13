@@ -54,6 +54,12 @@ export const ORDER_API = {
   CANCEL: '/api/user/orders'
 }
 
+// 钱包相关API
+export const WALLET_API = {
+  BALANCE: '/api/user/wallet/balance',  // 获取钱包余额
+  RECHARGE: '/api/user/wallet/recharge' // 钱包充值
+}
+
 // 后台管理API
 export const ADMIN_API = {
   // 商店管理
